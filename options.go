@@ -3,11 +3,22 @@ package oidc
 
 import "github.com/deepzz0/oidc/protocol"
 
+// BasicAuth http basic auth
+type BasicAuth struct {
+	Username string
+	Password string
+}
+
 // Option custon option
 type Option func(opts *Options)
 
 // Options oidc server options
 type Options struct {
+	Issuer string
+	// code / token generator
+	AuthorizeCodeGen AuthorizeCodeGenFunc
+	AccessTokenGen   AccessTokenGenFunc
+
 	// Token type access: default Bearer
 	TokenType string
 	// If true allows client secret algo in params: default false
@@ -21,11 +32,28 @@ type Options struct {
 	// Supported request object
 	SupportedRequestObject bool
 
-	// code / token generator
-	AuthorizeCodeGen AuthorizeCodeGenFunc
-	AccessTokenGen   AccessTokenGenFunc
-
 	Storage protocol.Storage
+}
+
+// WithIssuer specify the issuer for jwt
+func WithIssuer(iss string) Option {
+	return func(opts *Options) {
+		opts.Issuer = iss
+	}
+}
+
+// WithAuthorizeCodeGen change default generator
+func WithAuthorizeCodeGen(gen AuthorizeCodeGenFunc) Option {
+	return func(opts *Options) {
+		opts.AuthorizeCodeGen = gen
+	}
+}
+
+// WithAccessTokenGen change default generator
+func WithAccessTokenGen(gen AccessTokenGenFunc) Option {
+	return func(opts *Options) {
+		opts.AccessTokenGen = gen
+	}
 }
 
 // WithTokenType change default: Bearer to anothor
@@ -67,19 +95,5 @@ func WithForcePKCEForPublicClients(force bool) Option {
 func WithSupportedRequestObject(s bool) Option {
 	return func(opts *Options) {
 		opts.SupportedRequestObject = s
-	}
-}
-
-// WithAuthorizeCodeGen change default generator
-func WithAuthorizeCodeGen(gen AuthorizeCodeGenFunc) Option {
-	return func(opts *Options) {
-		opts.AuthorizeCodeGen = gen
-	}
-}
-
-// WithAccessTokenGen change default generator
-func WithAccessTokenGen(gen AccessTokenGenFunc) Option {
-	return func(opts *Options) {
-		opts.AccessTokenGen = gen
 	}
 }

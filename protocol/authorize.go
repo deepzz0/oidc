@@ -125,9 +125,3 @@ const (
 	// Endpoint even when the End-User is not present (not logged in).
 	ScopeOfflineAccess = "offline_access"
 )
-
-// AuthorizeData authorize data
-type AuthorizeData struct {
-	// Client information
-	Client Client
-}

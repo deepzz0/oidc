@@ -25,7 +25,3 @@ const (
 	// https://datatracker.ietf.org/doc/html/rfc8628
 	GrantTypeDeviceCode GrantType = "urn:ietf:params:oauth:grant-type:device_code"
 )
-
-// AccessData xx
-type AccessData struct {
-}

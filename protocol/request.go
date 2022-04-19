@@ -1,10 +1,10 @@
 // Package protocol provides ...
 package protocol
 
-// AuthorizeRequest An Authentication Request is an OAuth 2.0 Authorization Request that requests that
+// AuthorizeData An Authentication Request is an OAuth 2.0 Authorization Request that requests that
 // the End-User be authenticated by the Authorization Server.
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
-type AuthorizeRequest struct {
+type AuthorizeData struct {
 	Scope        SpaceDelimitedArr `json:"scope" schema:"scope"`
 	ResponseType ResponseType      `json:"response_type" schema:"response_type"`
 	ClientID     string            `json:"client_id" schema:"client_id"`
@@ -30,6 +30,55 @@ type AuthorizeRequest struct {
 	Client   Client                 `schema:"-"`
 }
 
-// AccessRequest is a request for access tokens
-type AccessRequest struct {
+// AccessData is a request for access tokens
+type AccessData struct {
+	GrantType GrantType `schema:"grant_type"`
+
+	// authorization_code
+	Code         string `schema:"code"`
+	RedirectURI  string `schema:"redirect_uri"`
+	CodeVerifier string `schema:"code_verifier"`
+	// refresh_token
+	RefreshToken string `schema:"refresh_token"`
+	// client_credentials
+
+	// password
+
+	// urn:ietf:params:oauth:grant-type:jwt-bearer
+	Issuer    string   `json:"iss"`
+	Subject   string   `json:"sub"`
+	Audience  Audience `json:"aud"`
+	IssuedAt  Time     `json:"iat"`
+	ExpiresAt Time     `json:"exp"`
+	// urn:ietf:params:oauth:grant-type:token-exchange
+	subjectToken       string   `schema:"subject_token"`
+	subjectTokenType   string   `schema:"subject_token_type"`
+	actorToken         string   `schema:"actor_token"`
+	actorTokenType     string   `schema:"actor_token_type"`
+	resource           []string `schema:"resource"`
+	audience           Audience `schema:"audience"`
+	requestedTokenType string   `schema:"requested_token_type"`
+	// urn:ietf:params:oauth:grant-type:device_code
+
+	// refresh_token & jwt-bearer & token-exchange
+	Scope SpaceDelimitedArr `json:"scope" schema:"scope"`
+	// authorization_code & refresh_token
+	ClientID            string `schema:"client_id"`
+	ClientSecret        string `schema:"client_secret"`
+	ClientAssertion     string `schema:"client_assertion"`
+	ClientAssertionType string `schema:"client_assertion_type"`
+
+	Client   Client      `schema:"-"`
+	UserData interface{} `schema:"-"`
+}
+
+// AccessTokenRequest access token request
+type AccessTokenRequest struct {
+	Code                string `schema:"code"`
+	RedirectURI         string `schema:"redirect_uri"`
+	ClientID            string `schema:"client_id"`
+	ClientSecret        string `schema:"client_secret"`
+	CodeVerifier        string `schema:"code_verifier"`
+	ClientAssertion     string `schema:"client_assertion"`
+	ClientAssertionType string `schema:"client_assertion_type"`
 }

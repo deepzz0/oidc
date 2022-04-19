@@ -37,8 +37,8 @@ func NewServer(options ...Option) *Server {
 		ForcePKCEForPublicClients: false,
 		SupportedRequestObject:    false,
 
-		AuthorizeCodeGen: DefaultAuthorizeCodeGenerator,
-		AccessTokenGen:   DefaultAccessTokenGenerator,
+		AuthorizeCodeGen: GenerateAuthorizeCode,
+		AccessTokenGen:   GenerateAccessToken,
 	}
 	for _, o := range options {
 		o(&opts)
@@ -57,7 +57,7 @@ func NewServer(options ...Option) *Server {
 }
 
 // HandleAuthorizeRequest authorization request handler
-func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request) *protocol.AuthorizeRequest {
+func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request) *protocol.AuthorizeData {
 	r.ParseForm()
 
 	// check method: must be GET or POST
@@ -68,7 +68,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 
 	// decode form params to struct
-	req := new(protocol.AuthorizeRequest)
+	req := new(protocol.AuthorizeData)
 	err := s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest, "", "")
@@ -159,7 +159,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 }
 
 // FinishAuthorizeRequest finish authorize request
-func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request, req *protocol.AuthorizeRequest) {
+func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request, req *protocol.AuthorizeData) {
 	for _, v := range strings.Fields(string(req.ResponseType)) {
 		ty := protocol.ResponseType(v)
 		switch ty {
@@ -191,7 +191,7 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 		case protocol.ResponseTypeIDToken:
 			resp.SetResponseMode(protocol.ResponseModeFragment)
 
-			key, err := s.options.Storage.PrivateKey(req.Client.ClientID())
+			key, err := req.Client.PrivateKey()
 			if err != nil {
 				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
 				return
@@ -208,11 +208,113 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 }
 
-// HandleToken token request handler
-func (s *Server) HandleToken(w http.ResponseWriter, r *http.Request) error {
+// HandleTokenRequest token request handler
+func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *protocol.AccessData {
 	r.ParseForm()
 
+	// https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
+	if r.Method != http.MethodPost {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Unsupported HTTP Method, should be GET or POST"), "", "")
+		return nil
+	}
+
+	var (
+		grantType = protocol.GrantType(r.FormValue("grant_type"))
+		err       error
+	)
+	switch grantType {
+	case protocol.GrantTypeAuthorizationCode:
+		err = s.handleAuthorizationCodeRequest(resp, r)
+	case protocol.GrantTypeRefreshToken:
+
+	case protocol.GrantTypePassword:
+
+	case protocol.GrantTypeClientCredentials:
+
+	case protocol.GrantTypeImplicit:
+		// nothing todo
+	case protocol.GrantTypeJwtBearer:
+
+	case protocol.GrantTypeTokenExchange:
+
+	case protocol.GrantTypeDeviceCode:
+
+	}
+	if err != nil {
+		resp.SetErrorURI(err.(protocol.Error), "", "")
+		return nil
+	}
+	// TODO
 	return nil
+}
+
+// // FinishTokenRequest finish token request
+// func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, req *protocol.AuthorizeData) {
+// 	accessToken, refreshToken, err := s.options.AccessTokenGen(nil, true)
+// 	if err != nil {
+// 		resp.SetErrorURI(protocol.ErrServerError.Wrap(err).Desc("error generate token"), "", "")
+// 		return
+// 	}
+//
+// 	// remove authorization token
+// 	err = s.options.Storage.RemoveAuthorize(req.Code)
+// 	if err != nil {
+// 		resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
+// 		return
+// 	}
+// 	// output data
+// 	resp.Output["access_token"] = accessToken
+// 	resp.Output["token_type"] = s.options.TokenType
+// 	resp.Output["refresh_token"] = refreshToken
+// 	resp.Output["expires_in"] = 0
+//
+// 	// oidc
+// 	for _, v := range req.Scope {
+// 		if v == string(protocol.ScopeOpenID) {
+// 			resp.Output["id_token"] = ""
+//
+// 			break
+// 		}
+// 	}
+//
+// }
+
+func (s *Server) getClient(auth *BasicAuth, resp *protocol.Response) (protocol.Client, error) {
+	cli, err := s.options.Storage.Client(auth.Username)
+	if err == protocol.ErrNotFoundEntity {
+		return nil, protocol.ErrUnauthorizedClient.Wrap(err).Desc("not found")
+	}
+	if err != nil {
+		return nil, protocol.ErrServerError.Wrap(err).Desc("error finding client")
+	}
+	if !ValidateClientSecret(cli, auth.Password) {
+		return nil, protocol.ErrUnauthorizedClient.Desc("client check failed: " + auth.Username)
+	}
+	if cli.RedirectURI() == "" {
+		return nil, protocol.ErrUnauthorizedClient.Desc("client redirect uri is empty")
+	}
+	return cli, nil
+}
+
+func (s *Server) getClientAuth(r *http.Request, inParams bool) *BasicAuth {
+	if inParams {
+		// Allow for auth without password
+		if _, ok := r.Form["client_secret"]; ok {
+			auth := &BasicAuth{
+				Username: r.FormValue("client_id"),
+				Password: r.FormValue("client_secret"),
+			}
+			if auth.Username != "" {
+				return auth
+			}
+		}
+	}
+
+	username, password, ok := r.BasicAuth()
+	if !ok {
+		return nil
+	}
+	return &BasicAuth{username, password}
 }
 
 func signPayload(key crypto.Signer, idToken interface{}) (string, error) {
@@ -262,8 +364,6 @@ func signatureAlgorithm(signer crypto.Signer) (jose.SignatureAlgorithm, error) {
 			return jose.ES256, nil
 		case elliptic.P384().Params():
 			return jose.ES384, nil
-		case elliptic.P521().Params():
-			return jose.ES512, nil
 		default:
 			return "", errors.New("unsupported ecdsa curve")
 		}

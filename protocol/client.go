@@ -1,6 +1,8 @@
 // Package protocol provides ...
 package protocol
 
+import "crypto"
+
 // DefaultExpirations default expirations
 var DefaultExpirations = Expirations{
 	CodeExpiration:         600,  // 10m
@@ -23,10 +25,10 @@ type Client interface {
 	// allowed scopes
 	IsScopeAllowed(scope string) bool
 
+	// PrivateKey loads the client private key
+	PrivateKey() (crypto.Signer, error)
 	// JSONWebTokenSignAlg sign with idtoken
-	JSONWebTokenSignAlg() string // HS256 / RS256
-	// TokenAuthMethod token endpoint auth method
-	TokenAuthMethod() string
+	JSONWebTokenSignAlg() string // HS256 | RS256
 	// DeviceAuthPath device authorize path
 	DeviceAuthPath() string
 	// client expirations, seconds
@@ -39,5 +41,6 @@ type Expirations struct {
 	AccessTokenExpiration  int32
 	RefreshTokenExpiration int32
 	IDTokenExpiration      int32
-	PollingInterval        int32 // device code
+
+	PollingInterval int32 // device code
 }
