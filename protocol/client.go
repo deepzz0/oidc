@@ -22,6 +22,8 @@ type Client interface {
 	RedirectURI() string
 	// allowed authorize type
 	ResponseTypes() []ResponseType
+	// GrantTypes grant types
+	GrantTypes() []GrantType
 	// allowed scopes
 	IsScopeAllowed(scope string) bool
 
@@ -37,10 +39,10 @@ type Client interface {
 
 // Expirations settings expiration
 type Expirations struct {
-	CodeExpiration         int32
-	AccessTokenExpiration  int32
-	RefreshTokenExpiration int32
-	IDTokenExpiration      int32
+	CodeExpiration         int
+	AccessTokenExpiration  int
+	RefreshTokenExpiration int
+	IDTokenExpiration      int
 
-	PollingInterval int32 // device code
+	PollingInterval int // device code
 }

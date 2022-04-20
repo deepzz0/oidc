@@ -237,3 +237,13 @@ func ValidateCodeChallenge(codeChall string, codeChallMethod protocol.CodeChalle
 func ValidateClientSecret(client protocol.Client, secret string) bool {
 	return subtle.ConstantTimeCompare([]byte(client.ClientSecret()), []byte(secret)) == 1
 }
+
+// ValidateGrantType validates the client grant type support
+func ValidateGrantType(types []protocol.GrantType, ty protocol.GrantType) bool {
+	for _, v := range types {
+		if v == ty {
+			return true
+		}
+	}
+	return false
+}

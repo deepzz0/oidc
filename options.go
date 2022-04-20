@@ -9,18 +9,24 @@ type BasicAuth struct {
 	Password string
 }
 
+// TokenType access token type
+type TokenType string
+
+// token type list
+const (
+	TokenTypeBearer = "Bearer"
+	TokenTypeJWT    = "JWT"
+)
+
 // Option custon option
 type Option func(opts *Options)
 
 // Options oidc server options
 type Options struct {
 	Issuer string
-	// code / token generator
-	AuthorizeCodeGen AuthorizeCodeGenFunc
-	AccessTokenGen   AccessTokenGenFunc
 
 	// Token type access: default Bearer
-	TokenType string
+	TokenType TokenType
 	// If true allows client secret algo in params: default false
 	AllowClientSecretInParams bool
 	// If true allows access request using GET, else only POST: default false
@@ -42,22 +48,8 @@ func WithIssuer(iss string) Option {
 	}
 }
 
-// WithAuthorizeCodeGen change default generator
-func WithAuthorizeCodeGen(gen AuthorizeCodeGenFunc) Option {
-	return func(opts *Options) {
-		opts.AuthorizeCodeGen = gen
-	}
-}
-
-// WithAccessTokenGen change default generator
-func WithAccessTokenGen(gen AccessTokenGenFunc) Option {
-	return func(opts *Options) {
-		opts.AccessTokenGen = gen
-	}
-}
-
 // WithTokenType change default: Bearer to anothor
-func WithTokenType(ty string) Option {
+func WithTokenType(ty TokenType) Option {
 	return func(opts *Options) {
 		opts.TokenType = ty
 	}

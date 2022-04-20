@@ -70,5 +70,29 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 				Desc("pkce code verifier does not match challenge")
 		}
 	}
+	// create access token
+	token, refresh, err := s.GenerateAccessToken(authData, true)
+	if err != nil {
+		return protocol.ErrServerError.Wrap(err)
+	}
+	resp.Output["access_token"] = token
+	resp.Output["refresh_token"] = refresh
+	resp.Output["token_type"] = s.options.TokenType
+	resp.Output["expires_in"] = authData.Client.ExpirationOptions().AccessTokenExpiration
+	for _, s := range authData.Scope {
+		if s == string(protocol.ScopeOpenID) {
+			key, err := authData.Client.PrivateKey()
+			if err != nil {
+				return protocol.ErrInvalidGrant.Wrap(err)
+			}
+			// UserData must be id_token data
+			idToken, err := signPayload(key, authData.UserData)
+			if err != nil {
+				return protocol.ErrServerError.Wrap(err)
+			}
+			resp.Output["id_token"] = idToken
+			break
+		}
+	}
 	return nil
 }

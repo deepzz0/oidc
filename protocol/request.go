@@ -82,3 +82,13 @@ type AccessTokenRequest struct {
 	ClientAssertion     string `schema:"client_assertion"`
 	ClientAssertionType string `schema:"client_assertion_type"`
 }
+
+// RefreshTokenRequest refresh token request
+type RefreshTokenRequest struct {
+	RefreshToken        string            `schema:"refresh_token"`
+	Scope               SpaceDelimitedArr `schema:"scope"`
+	ClientID            string            `schema:"client_id"`
+	ClientSecret        string            `schema:"client_secret"`
+	ClientAssertion     string            `schema:"client_assertion"`
+	ClientAssertionType string            `schema:"client_assertion_type"`
+}

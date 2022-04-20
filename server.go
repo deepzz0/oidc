@@ -36,9 +36,6 @@ func NewServer(options ...Option) *Server {
 		RedirectURISeparator:      ",",
 		ForcePKCEForPublicClients: false,
 		SupportedRequestObject:    false,
-
-		AuthorizeCodeGen: GenerateAuthorizeCode,
-		AccessTokenGen:   GenerateAccessToken,
 	}
 	for _, o := range options {
 		o(&opts)
@@ -165,22 +162,22 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 		switch ty {
 		case protocol.ResponseTypeCode:
 			// generate token code
-			code, err := s.options.AuthorizeCodeGen(req)
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
-				return
-			}
-
-			// save
-			err = s.options.Storage.SaveAuthorize(code, req)
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
-				return
-			}
-
-			// redirect with code
-			resp.Output["code"] = code
-			resp.Output["state"] = req.State
+			// code, err := s.options.AuthorizeCodeGen(req)
+			// if err != nil {
+			// 	resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
+			// 	return
+			// }
+			//
+			// // save
+			// err = s.options.Storage.SaveAuthorize(code, req)
+			// if err != nil {
+			// 	resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
+			// 	return
+			// }
+			//
+			// // redirect with code
+			// resp.Output["code"] = code
+			// resp.Output["state"] = req.State
 		case protocol.ResponseTypeToken:
 			resp.SetResponseMode(protocol.ResponseModeFragment)
 			// TODO
