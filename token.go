@@ -42,7 +42,7 @@ func (s *Server) GenerateAccessToken(req *protocol.AuthorizeData, genRefresh boo
 	case "Bearer":
 		plaintext := []byte(tokenID + ":" + req.UserData["sub"].(string))
 		var cipher []byte
-		cipher, err = crypto.AESEncrypt(plaintext, []byte(req.Client.ClientSecret()))
+		cipher, err = crypto.AESCBCEncrypt(plaintext, []byte(req.Client.ClientSecret()))
 		if err != nil {
 			return
 		}

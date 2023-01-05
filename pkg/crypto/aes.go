@@ -6,8 +6,8 @@ import (
 	"crypto/cipher"
 )
 
-// AESEncrypt AES-128。key长度：16, 24, 32 bytes 对应 AES-128, AES-192, AES-256
-func AESEncrypt(plaintext, key []byte) ([]byte, error) {
+// AESCBCEncrypt AES-128。key长度：16, 24, 32 bytes 对应 AES-128, AES-192, AES-256
+func AESCBCEncrypt(plaintext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -21,8 +21,8 @@ func AESEncrypt(plaintext, key []byte) ([]byte, error) {
 	return crypted, nil
 }
 
-// AESDecrypt decrypt cipher
-func AESDecrypt(crypted, key []byte) ([]byte, error) {
+// AESCBCDecrypt decrypt cipher
+func AESCBCDecrypt(crypted, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

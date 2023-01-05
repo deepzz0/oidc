@@ -5,7 +5,14 @@ package protocol
 // https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
 type ResponseType string
 
-// Response type list
+// Response type list, The following table lists the correspondence between response_type values that the Client
+// will use and grant_type values that MUST be included in the registered grant_types list
+//  code: authorization_code
+//  id_token: implicit
+//  token id_token: implicit
+//  code id_token: authorization_code, implicit
+//  code token: authorization_code, implicit
+//  code token id_token: authorization_code, implicit
 const (
 	// "code" for requesting an authorization code
 	ResponseTypeCode ResponseType = "code"
@@ -17,6 +24,11 @@ const (
 	// The Response Type none SHOULD NOT be combined with other Response Types.
 	// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#none
 	ResponseTypeNone ResponseType = "none"
+
+	ResponseTypeCodeToken        = "code token"
+	ResponseTypeCodeIDToken      = "code id_token"
+	ResponseTypeTokenIDToken     = "token id_token"
+	ResponseTypeCodeTokenIDToken = "code token id_token"
 )
 
 // IsSupportedResponseTypes check response type
@@ -47,8 +59,17 @@ type ResponseMode string
 
 // Response mode list
 const (
-	ResponseModeQuery    ResponseMode = "query"
+	// In this mode, Authorization Response parameters are encoded in the query string added
+	// to the redirect_uri when redirecting back to the Client.
+	ResponseModeQuery ResponseMode = "query"
+	// In this mode, Authorization Response parameters are encoded in the fragment added to
+	// the redirect_uri when redirecting back to the Client.
 	ResponseModeFragment ResponseMode = "fragment"
+	// In this mode, Authorization Response parameters are encoded as HTML form values that
+	// are auto-submitted in the User Agent, and thus are transmitted via the HTTP POST
+	// method to the Client, with the result parameters being encoded in the body using the
+	// application/x-www-form-urlencoded format.
+	// see https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html
 	ResponseModeFormPost ResponseMode = "form_post"
 )
 
@@ -104,7 +125,7 @@ const (
 // different actions and return different information based on the scope values and other
 // parameters used when requesting the presented Access Token.
 // https://openid.net/specs/openid-connect-core-1_0.html#ScopeClaims
-type Scope string
+type Scope = string
 
 // scope list
 const (
@@ -124,4 +145,34 @@ const (
 	// can be used to obtain an Access Token that grants access to the End-User's UserInfo
 	// Endpoint even when the End-User is not present (not logged in).
 	ScopeOfflineAccess = "offline_access"
+)
+
+// SubjectType A Subject Identifier is a locally unique and never reassigned identifier within the
+// Issuer for the End-User, which is intended to be consumed by the Client. Two Subject Identifier
+// types are defined by this specification
+type SubjectType string
+
+// subject list
+const (
+	// This provides a different sub value to each Client, so as not to enable Clients to correlate
+	// the End-User's activities without permission.
+	SubjectTypePairwise SubjectType = "pairwise"
+	// This provides the same sub (subject) value to all Clients. It is the default if the provider
+	// has no subject_types_supported element in its discovery document.
+	SubjectTypePublic SubjectType = "public"
+)
+
+// ClaimType the Claim Types that the OpenID Provider supports
+type ClaimType string
+
+// claim type list
+const (
+	// Claims that are directly asserted by the OpenID Provider.
+	ClaimTypeNormal ClaimType = "normal"
+	// Claims that are asserted by a Claims Provider other than the OpenID Provider but are returned
+	// by OpenID Provider.
+	ClaimTypeAggregated ClaimType = "aggregated"
+	// Claims that are asserted by a Claims Provider other than the OpenID Provider but are returned
+	// as references by the OpenID Provider.
+	ClaimTypeDistributed ClaimType = "distributed"
 )

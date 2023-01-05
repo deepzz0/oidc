@@ -30,7 +30,7 @@ type Server struct {
 // NewServer new OAuth/OIDC server
 func NewServer(options ...Option) *Server {
 	opts := Options{
-		TokenType:                 "Bearer",
+		TokenType:                 TokenTypeBearer,
 		AllowClientSecretInParams: false,
 		AllowGetAccessRequest:     false,
 		RedirectURISeparator:      ",",

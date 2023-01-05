@@ -89,3 +89,10 @@ func WithSupportedRequestObject(s bool) Option {
 		opts.SupportedRequestObject = s
 	}
 }
+
+// WithStorage implements protocol.Storage object
+func WithStorage(storage protocol.Storage) Option {
+	return func(opts *Options) {
+		opts.Storage = storage
+	}
+}
