@@ -16,7 +16,7 @@ type Error struct {
 // Error implements error interface
 func (e Error) Error() string {
 	if e.internalErr != nil {
-		return fmt.Sprintf("%s: %s %v", e.ErrorCode, e.Description, e.internalErr)
+		return fmt.Sprintf("%s: %s (%v)", e.ErrorCode, e.Description, e.internalErr)
 	}
 	return e.ErrorCode + ": " + e.Description
 }
@@ -35,9 +35,26 @@ func (e Error) Desc(desc string) Error {
 
 // error code list
 var (
+	// https://www.rfc-editor.org/rfc/rfc6750.html#section-3.1
 	ErrInvalidRequest = Error{
 		ErrorCode:   "invalid_request",
 		Description: "The request is missing a required parameter, includes an invalid parameter value, includes a parameter more than once, or is otherwise malformed.",
+		statusCode:  400,
+	}
+	ErrInvalidToken = Error{
+		ErrorCode:   "invalid_token",
+		Description: "The access token provided is expired, revoked, malformed, or invalid for other reasons.",
+		statusCode:  401,
+	}
+	ErrInsufficientScope = Error{
+		ErrorCode:   "insufficient_scope",
+		Description: "The request requires higher privileges than provided by the access token.",
+		statusCode:  403,
+	}
+	// https://www.rfc-editor.org/rfc/rfc7009.html#section-2.2.1
+	ErrUnsupportedTokenType = Error{
+		ErrorCode:   "unsupported_token_type",
+		Description: "The authorization server does not support the revocation of the presented token type.",
 		statusCode:  400,
 	}
 	ErrUnauthorizedClient = Error{
@@ -100,6 +117,29 @@ var (
 	ErrExpiredToken = Error{
 		ErrorCode:   "expired_token",
 		Description: "The device_code has expired, and the device authorization session has concluded.",
+		statusCode:  400,
+	}
+	// https://www.rfc-editor.org/rfc/rfc8707.html#name-resource-parameter
+	ErrInvalidTarget = Error{
+		ErrorCode:   "invalid_target",
+		Description: "The requested resource is invalid, missing, unknown, or malformed.",
+		statusCode:  400,
+	}
+	// https://www.rfc-editor.org/rfc/rfc9200.html#section-5.8.3
+	ErrUnsupportedPopKey = Error{
+		ErrorCode:   "unsupported_pop_key",
+		Description: "The client submits an asymmetric key in the token request that the RS cannot process.",
+		statusCode:  400,
+	}
+	ErrIncompatibleAceProfiles = Error{
+		ErrorCode:   "incompatible_ace_profiles",
+		Description: "The client and the RS it has requested an access token for do not share a common profile.",
+		statusCode:  400,
+	}
+	// https://datatracker.ietf.org/doc/draft-ietf-oauth-rar/22/
+	ErrInvalidAuthorizationDetails = Error{
+		ErrorCode:   "invalid_authorization_details",
+		Description: "Unknown authorization details type or authorization details not conforming to the respective type definition.",
 		statusCode:  400,
 	}
 	// Authentication Error Response

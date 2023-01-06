@@ -42,6 +42,31 @@ const (
 	// Flow (and so does not use the Token Endpoint) or because it is a Public Client with no Client Secret or
 	// other authentication mechanism.
 	ClientAuthMethodNone ClientAuthMethod = "none"
+
+	// https://www.rfc-editor.org/rfc/rfc8705.html
+	// Indicates that client authentication to the authorization server will occur with mutual TLS utilizing
+	// the PKI method of associating a certificate to a client
+	ClientAuthMethodTLSClientAuth = "tls_client_auth"
+	// Indicates that client authentication to the authorization server will occur using mutual TLS with the
+	// client utilizing a self-signed certificate.
+	ClientAuthMethodSelfSignedTLSClientAuth = "self_signed_tls_client_auth"
+)
+
+// ClientAssertionType client authentication, the client uses the following parameter values and encodings.
+type ClientAssertionType string
+
+// assertion type list
+const (
+	// The value of the "client_assertion" parameter contains a single JWT.  It MUST NOT contain more than one
+	// JWT.
+	ClientAssertionTypeJWTBearer = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+	// The value of the "client_assertion" parameter MUST contain a single SAML 2.0 Assertion.  The SAML
+	// Assertion XML data MUST be encoded using base64url, where the encoding adheres to the definition in
+	// Section 5 of RFC 4648 [RFC4648] and where the padding bits are set to zero.  To avoid the need for
+	// subsequent encoding steps (by "application/x-www-form-urlencoded" [W3C.REC-html401-19991224], for
+	// example), the base64url-encoded data SHOULD NOT be line wrapped and pad characters ("=") SHOULD NOT
+	// be included.
+	ClientAssertionTypeSMAL2Bearer = "urn:ietf:params:oauth:client-assertion-type:saml2-bearer"
 )
 
 // DefaultExpirations default expirations

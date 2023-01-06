@@ -108,9 +108,7 @@ func ValidateURIList(baseURIList, redirectURI, separator string) (realRedirectUR
 	uris := strings.Split(baseURIList, separator)
 	// if there are multiple client redirect uri's don't set the uri
 	if redirectURI == "" {
-		if uris[0] == baseURIList {
-			redirectURI = baseURIList
-		}
+		return "", newURIValidationError("redirect_uri not found", baseURIList, "")
 	}
 	// validates that redirectURI is contained in baseURIList.
 	for _, v := range uris {
@@ -133,15 +131,15 @@ func ValidateScopes(cli protocol.Client, scopes []string) ([]string, bool) {
 	openIDScope := false
 	for i := len(scopes) - 1; i >= 0; i-- {
 		scope := scopes[i]
-		if scope == string(protocol.ScopeOpenID) {
+		if scope == protocol.ScopeOpenID {
 			openIDScope = true
 			continue
 		}
-		if !(scope == string(protocol.ScopeProfile) ||
-			scope == string(protocol.ScopeEmail) ||
-			scope == string(protocol.ScopeAddress) ||
-			scope == string(protocol.ScopePhone) ||
-			scope == string(protocol.ScopeOfflineAccess)) &&
+		if !(scope == protocol.ScopeProfile ||
+			scope == protocol.ScopeEmail ||
+			scope == protocol.ScopeAddress ||
+			scope == protocol.ScopePhone ||
+			scope == protocol.ScopeOfflineAccess) &&
 			!cli.IsScopeAllowed(scope) {
 			scopes[i] = scopes[len(scopes)-1]
 			scopes = scopes[:len(scopes)-1]

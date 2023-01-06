@@ -136,7 +136,10 @@ func handleOIDCJwksJSON(c *gin.Context) {
 func handleOIDCAuthorize(c *gin.Context) {
 	resp := protocol.NewResponse()
 	if ad := server.HandleAuthorizeRequest(resp, c.Request); ad != nil {
-		fmt.Println(ad)
+		// TODO 判断是否登录，未登录重定向到登录页面
+
+		fmt.Printf("test: %#v\n", ad)
+		server.FinishAuthorizeRequest(resp, c.Request, ad)
 	}
 	if resp.ErrCode != nil {
 		log.Println(resp.ErrCode)

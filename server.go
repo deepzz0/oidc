@@ -55,8 +55,11 @@ func NewServer(options ...Option) *Server {
 
 // HandleAuthorizeRequest authorization request handler
 func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request) *protocol.AuthorizeData {
-	r.ParseForm()
-
+	err := r.ParseForm()
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
+		return nil
+	}
 	// check method: must be GET or POST
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
@@ -65,99 +68,98 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 
 	// decode form params to struct
-	req := new(protocol.AuthorizeData)
-	err := s.decoder.Decode(req, r.Form)
+	ret := new(protocol.AuthorizeData)
+	err = s.decoder.Decode(ret, r.Form)
 	if err != nil {
-		resp.SetErrorURI(protocol.ErrInvalidRequest, "", "")
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
 		return nil
 	}
 	// query client
-	cli, err := s.options.Storage.Client(req.ClientID)
+	cli, err := s.options.Storage.Client(ret.ClientID)
 	if err != nil {
-		if err != protocol.ErrNotFoundEntity {
-			resp.SetErrorURI(protocol.ErrUnauthorizedClient.Wrap(err), "", req.State)
+		if err == protocol.ErrNotFoundEntity {
+			resp.SetErrorURI(protocol.ErrUnauthorizedClient.Wrap(err), "", ret.State)
 		} else {
-			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
+			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", ret.State)
 		}
 		return nil
 	}
+	ret.Client = cli
+	// 0. check request object
+	// TODO not implements
+	//
 	// 1. check redirect uri
-	req.RedirectURI, err = url.QueryUnescape(req.RedirectURI)
+	ret.RedirectURI, err = url.QueryUnescape(ret.RedirectURI)
 	if err != nil {
-		resp.SetErrorURI(protocol.ErrInvalidRequestURI, "", req.State)
+		resp.SetErrorURI(protocol.ErrInvalidRequestURI.Wrap(err), "", ret.State)
 		return nil
 	}
-	req.RedirectURI, err = ValidateURIList(cli.RedirectURI(), req.RedirectURI, s.options.RedirectURISeparator)
+	ret.RedirectURI, err = ValidateURIList(cli.RedirectURI(), ret.RedirectURI, s.options.RedirectURISeparator)
 	if err != nil {
-		resp.SetErrorURI(protocol.ErrInvalidRequest.
-			Desc("The requested redirect_uri is missing in the client configuration or invalid"), "", req.State)
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).
+			Desc("The requested redirect_uri is missing in the client configuration or invalid"), "", ret.State)
 		return nil
 	}
-	resp.SetRedirectURL(req.RedirectURI)
+	resp.SetRedirectURL(ret.RedirectURI)
 
 	// 2. check resposne type
-	typesOK, err := ValidateResponseType(cli, string(req.ResponseType))
+	typesOK, err := ValidateResponseType(cli, string(ret.ResponseType))
 	if err != nil {
-		resp.SetErrorURI(protocol.ErrUnsupportedResponseType, "", req.State)
+		resp.SetErrorURI(protocol.ErrUnsupportedResponseType.Wrap(err), "", ret.State)
 		return nil
 	}
 	// 3. check scopes
 	var openIDScope bool
-	req.Scope, openIDScope = ValidateScopes(cli, req.Scope)
-	// oidc flow
-	if openIDScope {
+	ret.Scope, openIDScope = ValidateScopes(cli, ret.Scope)
+	if openIDScope { // oidc flow
 		// "token" can't be provided by its own.
-		//
 		// https://openid.net/specs/openid-connect-core-1_0.html#Authentication
 		if typesOK.ResponseTypeToken && !typesOK.ResponseTypeCode && !typesOK.ResponseTypeIDToken {
-			resp.SetErrorURI(protocol.ErrInvalidRequest, "", req.State)
+			resp.SetErrorURI(protocol.ErrInvalidRequest, "", ret.State)
 			return nil
 		}
 		// Either "id_token token" or "id_token" has been provided which implies the
 		// implicit flow. Implicit flow requires a nonce value.
-		//
 		// https://openid.net/specs/openid-connect-core-1_0.html#ImplicitAuthRequest
-		if !typesOK.ResponseTypeCode && req.Nonce == "" {
-			resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Implicit flow requires a nonce value"), "", req.State)
+		if !typesOK.ResponseTypeCode && ret.Nonce == "" {
+			resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Implicit flow requires a nonce value"), "", ret.State)
 			return nil
 		}
-		// check id_token_hint
-		userID, err := ValidateIDTokenHint(req.IDTokenHint)
+		// TODO check id_token_hint
+		userID, err := ValidateIDTokenHint(ret.IDTokenHint)
 		if err != nil {
-			resp.SetErrorURI(protocol.ErrLoginRequired.Desc("The id_token_hint is invalid"), "", req.State)
+			resp.SetErrorURI(protocol.ErrLoginRequired.Desc("The id_token_hint is invalid"), "", ret.State)
 			return nil
 		}
-		// TODO
 		fmt.Println(userID)
 	}
-	// oauth2 flow
 	// 4. check code challenge
-	if typesOK.ResponseTypeCode || typesOK.ResponseTypeDevice {
+	if typesOK.ResponseTypeCode || typesOK.ResponseTypeDevice { // oauth2 flow
 		// Optional PKCE support (https://tools.ietf.org/html/rfc7636)
-		if req.CodeChallenge == "" {
+		if ret.CodeChallenge == "" {
 			if s.options.ForcePKCEForPublicClients && ValidateClientSecret(cli, "") {
 				resp.SetErrorURI(protocol.ErrInvalidRequest.
-					Desc("code_challenge (rfc7636) required for public client"), "", req.State)
+					Desc("code_challenge (rfc7636) required for public client"), "", ret.State)
 				return nil
 			}
 		}
-		codeChallMethod, ok := ValidateCodeChallenge(req.CodeChallenge, req.CodeChallengeMethod)
+		codeChallMethod, ok := ValidateCodeChallenge(ret.CodeChallenge, ret.CodeChallengeMethod)
 		if !ok && s.options.ForcePKCEForPublicClients {
 			// https://tools.ietf.org/html/rfc7636#section-4.4.1
 			resp.SetErrorURI(protocol.ErrInvalidRequest.
-				Desc("code_challenge (rfc7636) required for public clients"), "", req.State)
+				Desc("code_challenge (rfc7636) required for public clients"), "", ret.State)
 			return nil
 		}
-		req.CodeChallengeMethod = codeChallMethod
+		ret.CodeChallengeMethod = codeChallMethod
 	}
 	// 5. check device flow
 	// TODO
-	return req
+	return ret
 }
 
 // FinishAuthorizeRequest finish authorize request
-func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request, req *protocol.AuthorizeData) {
-	for _, v := range strings.Fields(string(req.ResponseType)) {
+func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request, ret *protocol.AuthorizeData) {
+	for _, v := range strings.Fields(string(ret.ResponseType)) {
 		ty := protocol.ResponseType(v)
 		switch ty {
 		case protocol.ResponseTypeCode:
@@ -182,25 +184,25 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 			resp.SetResponseMode(protocol.ResponseModeFragment)
 			// TODO
 
-			if req.State != "" && resp.ErrCode == nil {
-				resp.Output["state"] = req.State
+			if ret.State != "" && resp.ErrCode == nil {
+				resp.Output["state"] = ret.State
 			}
 		case protocol.ResponseTypeIDToken:
 			resp.SetResponseMode(protocol.ResponseModeFragment)
 
-			key, err := req.Client.PrivateKey()
+			key, err := ret.Client.PrivateKey()
 			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
+				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", ret.State)
 				return
 			}
 			// user data must be id_token data
-			idToken, err := signPayload(key, req.UserData)
+			idToken, err := signPayload(key, ret.UserData)
 			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
+				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", ret.State)
 				return
 			}
 			resp.Output["id_token"] = idToken
-			resp.Output["state"] = req.State
+			resp.Output["state"] = ret.State
 		}
 	}
 }
