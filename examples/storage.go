@@ -7,7 +7,7 @@ import "github.com/deepzz0/oidc/protocol"
 type TestStorage struct {
 	clients   map[string]protocol.Client
 	authorize map[string]*protocol.AuthorizeData
-	access    map[string]*protocol.AuthorizeData
+	access    map[string]*protocol.AccessData
 	refresh   map[string]string
 }
 
@@ -16,6 +16,8 @@ func NewTestStorage() *TestStorage {
 	s := &TestStorage{
 		clients:   make(map[string]protocol.Client),
 		authorize: make(map[string]*protocol.AuthorizeData),
+		access:    make(map[string]*protocol.AccessData),
+		refresh:   make(map[string]string),
 	}
 	s.clients["test_client_id"] = &TestClient{
 		ID:       "test_client_id",
@@ -35,13 +37,30 @@ func (s *TestStorage) Client(clientID string) (protocol.Client, error) {
 }
 
 // UserInfoScopes get user info from scopes
-func (s *TestStorage) UserInfoScopes(scopes []string) (map[string]interface{}, error) {
+func (s *TestStorage) UserInfoScopes(uid string, scopes []protocol.Scope) (map[string]interface{}, error) {
+	if uid != "1234" {
+		return nil, protocol.ErrNotFoundEntity
+	}
+	info := map[string]interface{}{}
+	for _, v := range scopes {
+		switch v {
+		case protocol.ScopeEmail:
+			info["email"] = "hello@example.com"
+			info["email_verified"] = true
+		case protocol.ScopePhone:
+			info["phone_number"] = "1234567890"
+			info["phone_number_verified"] = true
+		case protocol.ScopeProfile:
 
-	return nil, nil
+		case protocol.ScopeOpenID:
+
+		}
+	}
+	return info, nil
 }
 
 // SaveAuthorize saves authorize data.
-func (s *TestStorage) SaveAuthorize(code string, exp int, data *protocol.AuthorizeData) error {
+func (s *TestStorage) SaveAuthorize(code string, data *protocol.AuthorizeData, exp int) error {
 	// TODO ignore exp
 	s.authorize[code] = data
 	return nil
@@ -66,7 +85,7 @@ func (s *TestStorage) RemoveAuthorize(code string) error {
 
 // SaveAccess writes AccessData.
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
-func (s *TestStorage) SaveAccess(token string, data *protocol.AuthorizeData, exp int) error {
+func (s *TestStorage) SaveAccess(token string, data *protocol.AccessData, exp int) error {
 	// TODO ingored exp
 	s.access[token] = data
 	return nil
@@ -75,7 +94,7 @@ func (s *TestStorage) SaveAccess(token string, data *protocol.AuthorizeData, exp
 // LoadAccess retrieves access data by token. Client information MUST be loaded together.
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
-func (s *TestStorage) LoadAccess(token string) (data *protocol.AuthorizeData, err error) {
+func (s *TestStorage) LoadAccess(token string) (data *protocol.AccessData, err error) {
 	data, ok := s.access[token]
 	if !ok {
 		return nil, protocol.ErrNotFoundEntity
@@ -99,7 +118,7 @@ func (s *TestStorage) SaveRefresh(refresh, token string, exp int) (err error) {
 // LoadRefresh retrieves refresh AccessData. Client information MUST be loaded together.
 // AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 // Optionally can return error if expired.
-func (s *TestStorage) LoadRefresh(refresh string) (data *protocol.AuthorizeData, err error) {
+func (s *TestStorage) LoadRefresh(refresh string) (data *protocol.AccessData, err error) {
 	token, ok := s.refresh[refresh]
 	if !ok {
 		return nil, protocol.ErrNotFoundEntity

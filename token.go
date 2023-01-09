@@ -13,8 +13,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// GenerateAuthorizeCode default authorize code generator
-func (s *Server) GenerateAuthorizeCode(req *protocol.AuthorizeData) (code string, err error) {
+var defaultAESKey = []byte{89, 88, 86, 48, 97, 71, 57, 121, 97, 88, 112, 104, 100, 71, 108, 118}
+
+// GenerateAuthorizeCodeAndSave default authorize code generator
+func (s *Server) GenerateAuthorizeCodeAndSave(req *protocol.AuthorizeData) (code string, err error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return
@@ -22,12 +24,14 @@ func (s *Server) GenerateAuthorizeCode(req *protocol.AuthorizeData) (code string
 	code = base64.RawURLEncoding.EncodeToString(id[:])
 
 	exps := req.Client.ExpirationOptions()
-	return code, s.options.Storage.SaveAuthorize(code, int(exps.CodeExpiration), req)
+	req.CreatedAt = time.Now()
+	req.ExpiresIn = exps.CodeExpiration
+	return code, s.options.Storage.SaveAuthorize(code, req, req.ExpiresIn)
 }
 
-// GenerateAccessToken generate access token or refresh_token
-func (s *Server) GenerateAccessToken(req *protocol.AuthorizeData, genRefresh bool) (token,
-	refresh string, err error) {
+// GenerateAccessTokenAndSave generate access token or refresh_token
+func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
+	genRefresh bool) (token, refresh string, err error) {
 
 	// access token
 	id, err := uuid.NewRandom()
@@ -38,15 +42,10 @@ func (s *Server) GenerateAccessToken(req *protocol.AuthorizeData, genRefresh boo
 	// bearer token
 	now := time.Now().UTC()
 	exps := req.Client.ExpirationOptions()
+	req.CreatedAt = now
+	req.ExpiresIn = exps.AccessTokenExpiration
+	req.TokenType = string(s.options.TokenType)
 	switch s.options.TokenType {
-	case "Bearer":
-		plaintext := []byte(tokenID + ":" + req.UserData["sub"].(string))
-		var cipher []byte
-		cipher, err = crypto.AESCBCEncrypt(plaintext, []byte(req.Client.ClientSecret()))
-		if err != nil {
-			return
-		}
-		token = base64.RawURLEncoding.EncodeToString(cipher[:])
 	case "JWT":
 		claims := jwt.RegisteredClaims{
 			// A usual scenario is to set the expiration time relative to the current time
@@ -57,7 +56,7 @@ func (s *Server) GenerateAccessToken(req *protocol.AuthorizeData, genRefresh boo
 			Issuer:    s.options.Issuer,
 			Subject:   req.UserData["sub"].(string),
 			ID:        tokenID,
-			Audience:  []string{req.ClientID},
+			Audience:  []string{req.Client.ClientID()},
 		}
 		var (
 			signMethod jwt.SigningMethod
@@ -76,6 +75,16 @@ func (s *Server) GenerateAccessToken(req *protocol.AuthorizeData, genRefresh boo
 		if err != nil {
 			return
 		}
+	case "Bearer":
+		var cipher []byte
+		key := make([]byte, 16)
+		copy(key, defaultAESKey)
+		copy(key, []byte(req.Client.ClientSecret()))
+		cipher, err = crypto.AESCBCEncrypt([]byte(tokenID), key)
+		if err != nil {
+			return
+		}
+		token = base64.RawURLEncoding.EncodeToString(cipher[:])
 	default:
 		err = errors.New("unsupported token type: " + string(s.options.TokenType))
 		return

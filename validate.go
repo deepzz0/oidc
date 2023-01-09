@@ -126,7 +126,7 @@ func ValidateURIList(baseURIList, redirectURI, separator string) (realRedirectUR
 	return "", newURIValidationError("urls don't validate", baseURIList, redirectURI)
 }
 
-// ValidateScopes validates the scopes
+// ValidateScopes validates the scopes & remove invalid scope
 func ValidateScopes(cli protocol.Client, scopes []string) ([]string, bool) {
 	openIDScope := false
 	for i := len(scopes) - 1; i >= 0; i-- {
@@ -194,7 +194,7 @@ func ValidateResponseType(cli protocol.Client, typ string) (ResponseTypeOK, erro
 }
 
 // ValidateIDTokenHint validates the id_token_hint (if passed as parameter in the request)
-// and returns the `sub` claim
+// and returns the `sub` claim TODO
 func ValidateIDTokenHint(idTokenHit string) (string, error) {
 	if idTokenHit == "" {
 		return "", nil

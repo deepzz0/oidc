@@ -37,6 +37,8 @@ type Options struct {
 	ForcePKCEForPublicClients bool
 	// Supported request object
 	SupportedRequestObject bool
+	// Retain token after refresh
+	RetainTokenAfrerRefresh bool
 
 	Storage protocol.Storage
 }
@@ -87,6 +89,13 @@ func WithForcePKCEForPublicClients(force bool) Option {
 func WithSupportedRequestObject(s bool) Option {
 	return func(opts *Options) {
 		opts.SupportedRequestObject = s
+	}
+}
+
+// WithRetainTokenAfterRefresh retain token afrer refresh until expired
+func WithRetainTokenAfterRefresh(s bool) Option {
+	return func(opts *Options) {
+		opts.RetainTokenAfrerRefresh = s
 	}
 }
 

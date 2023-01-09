@@ -105,10 +105,15 @@ type Client interface {
 
 // Expirations settings expiration
 type Expirations struct {
-	CodeExpiration         int
-	AccessTokenExpiration  int
+	// Authorize code expires
+	CodeExpiration int
+	// Access token expires
+	AccessTokenExpiration int
+	// Refresh token expires
 	RefreshTokenExpiration int
-	IDTokenExpiration      int
+	// ID token expires
+	IDTokenExpiration int
 
-	PollingInterval int // device code
+	// Device code polling interval
+	PollingInterval int
 }

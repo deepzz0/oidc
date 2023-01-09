@@ -6,46 +6,48 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/deepzz0/oidc/protocol"
 )
 
-func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http.Request) error {
-	req := &protocol.AccessTokenRequest{}
-	err := s.decoder.Decode(req, r.Form)
-	if err != nil {
-		return protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form")
-	}
+func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http.Request,
+	req *protocol.AccessRequest) error {
 
-	// client authentication
-	auth := s.getClientAuth(r, s.options.AllowClientSecretInParams)
-	if auth == nil {
-		return protocol.ErrInvalidRequest.Desc("check auth error")
+	// validate grant type
+	if !ValidateGrantType(req.Client.GrantTypes(), protocol.GrantTypeAuthorizationCode) {
+		return protocol.ErrInvalidGrant.Desc("unsupported grant type: authorization_code")
 	}
-	// code is required
+	// code is required, must be a valid authorization code
 	if req.Code == "" {
 		return protocol.ErrInvalidGrant.Desc("code is required")
 	}
-	// must have a valid client
-	cli, err := s.getClient(auth, resp)
-	if err != nil {
-		return err
-	}
-	// must be a valid authorization code
 	authData, err := s.options.Storage.LoadAuthorize(req.Code)
 	if err != nil {
 		if err == protocol.ErrNotFoundEntity {
-			return protocol.ErrExpiredToken.Desc("authorization data is expired")
+			return protocol.ErrInvalidGrant.Desc("code is expired or invalid")
 		}
 		return protocol.ErrInvalidGrant.Wrap(err).Desc("error loading authorize data")
 	}
-	// code must be from the client
 	if authData.ClientID != req.ClientID {
 		return protocol.ErrInvalidGrant.Desc("client code does not match")
 	}
-	req.RedirectURI, err = ValidateURIList(cli.RedirectURI(), req.RedirectURI, s.options.RedirectURISeparator)
+	// check expires
+	if authData.CreatedAt.Add(time.Second * time.Duration(authData.ExpiresIn)).
+		Before(time.Now()) {
+		return protocol.ErrInvalidGrant.Desc("authorization data is expired")
+	}
+	// check redirect uri
+	uri := req.Client.RedirectURI()
+	if uri == "" {
+		return protocol.ErrUnauthorizedClient.Desc("client redirect uri is empty")
+	}
+	req.RedirectURI, err = ValidateURIList(uri, req.RedirectURI, s.options.RedirectURISeparator)
 	if err != nil {
 		return protocol.ErrInvalidRequest.Desc("error validating client redirect uri")
+	}
+	if authData.RedirectURI != req.RedirectURI {
+		return protocol.ErrInvalidRequest.Desc("client redirect does not match authorization data")
 	}
 	// verify PKCE, if present in the authorization data
 	if authData.CodeChallenge != "" {
@@ -68,31 +70,10 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 		if codeVerifier != authData.CodeChallenge {
 			return protocol.ErrInvalidGrant.Wrap(errors.New("code_verifier failed comparison with code_challenge")).
 				Desc("pkce code verifier does not match challenge")
+
 		}
 	}
-	// create access token
-	token, refresh, err := s.GenerateAccessToken(authData, true)
-	if err != nil {
-		return protocol.ErrServerError.Wrap(err)
-	}
-	resp.Output["access_token"] = token
-	resp.Output["refresh_token"] = refresh
-	resp.Output["token_type"] = s.options.TokenType
-	resp.Output["expires_in"] = authData.Client.ExpirationOptions().AccessTokenExpiration
-	for _, s := range authData.Scope {
-		if s == string(protocol.ScopeOpenID) {
-			key, err := authData.Client.PrivateKey()
-			if err != nil {
-				return protocol.ErrInvalidGrant.Wrap(err)
-			}
-			// UserData must be id_token data
-			idToken, err := signPayload(key, authData.UserData)
-			if err != nil {
-				return protocol.ErrServerError.Wrap(err)
-			}
-			resp.Output["id_token"] = idToken
-			break
-		}
-	}
+	req.GenerateRefresh = true
+	req.UserID = authData.UserID
 	return nil
 }

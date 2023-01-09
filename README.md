@@ -20,6 +20,7 @@ Golang OAuth2/OIDC Server Library.
 - [ ] Password Grant `Legacy`
 - [ ] Session Management
 - [ ] Revocation
+- [ ] Request Object
 
 Have fun!
 

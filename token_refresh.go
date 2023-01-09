@@ -7,66 +7,39 @@ import (
 	"github.com/deepzz0/oidc/protocol"
 )
 
-func (s *Server) handleRefreshTokenRequest(resp *protocol.Response, r *http.Request) error {
-	req := &protocol.RefreshTokenRequest{}
-	err := s.decoder.Decode(req, r.Form)
-	if err != nil {
-		return protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form")
-	}
+func (s *Server) handleRefreshTokenRequest(resp *protocol.Response, r *http.Request,
+	req *protocol.AccessRequest) error {
 
-	// client authentication
-	auth := s.getClientAuth(r, s.options.AllowClientSecretInParams)
-	if auth == nil {
-		return protocol.ErrInvalidRequest.Desc("check auth error")
+	// validate grant type
+	if !ValidateGrantType(req.Client.GrantTypes(), protocol.GrantTypeRefreshToken) {
+		return protocol.ErrInvalidGrant.Desc("unsupported grant type: refresh_token")
 	}
 	// refresh_token is required
 	if req.RefreshToken == "" {
 		return protocol.ErrInvalidGrant.Desc("refresh_token is required")
 	}
-	// TODO assertion_type
 
-	// must have a valid client
-	cli, err := s.getClient(auth, resp)
-	if err != nil {
-		return protocol.ErrInvalidClient.Wrap(err)
-	}
-	// validate grant type
-	if !ValidateGrantType(cli.GrantTypes(), protocol.GrantTypeRefreshToken) {
-		return protocol.ErrUnauthorizedClient
-	}
 	// auth data
-	authData, err := s.options.Storage.LoadRefresh(req.RefreshToken)
+	var err error
+	req.AccessData, err = s.options.Storage.LoadRefresh(req.RefreshToken)
 	if err != nil {
-		return protocol.ErrExpiredToken.Wrap(err)
+		return protocol.ErrInvalidGrant.Wrap(err).Desc("refresh_token is expired or invalid")
 	}
-	if authData.ClientID != req.ClientID {
-		return protocol.ErrInvalidClient.Desc("Client id must be the same from previous token")
+	if req.AccessData.AccessRequest.ClientID != req.ClientID {
+		return protocol.ErrInvalidClient.Desc("client id must be the same from previous token")
 	}
 	// scope 是否相等
-	// TODO
-
-	token, refresh, err := s.GenerateAccessToken(authData, true)
-	if err != nil {
-		return protocol.ErrServerError.Wrap(err)
+	m := make(map[protocol.Scope]bool)
+	for _, v := range req.AccessData.Scope {
+		m[v] = true
 	}
-	resp.Output["access_token"] = token
-	resp.Output["refresh_token"] = refresh
-	resp.Output["token_type"] = s.options.TokenType
-	resp.Output["expires_in"] = authData.Client.ExpirationOptions().AccessTokenExpiration
-	for _, s := range authData.Scope {
-		if s == string(protocol.ScopeOpenID) {
-			key, err := authData.Client.PrivateKey()
-			if err != nil {
-				return protocol.ErrInvalidGrant.Wrap(err)
-			}
-			// UserData must be id_token data
-			idToken, err := signPayload(key, authData.UserData)
-			if err != nil {
-				return protocol.ErrServerError.Wrap(err)
-			}
-			resp.Output["id_token"] = idToken
-			break
+	for _, v := range req.Scope {
+		if !m[v] {
+			msg := "the requested scope must not include any scope not originally granted by the resource owner"
+			return protocol.ErrAccessDenied.Desc(msg)
 		}
 	}
+	req.GenerateRefresh = true
+	req.UserID = req.AccessData.AccessRequest.UserID
 	return nil
 }

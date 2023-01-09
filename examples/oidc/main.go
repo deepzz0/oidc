@@ -138,7 +138,8 @@ func handleOIDCAuthorize(c *gin.Context) {
 	if ad := server.HandleAuthorizeRequest(resp, c.Request); ad != nil {
 		// TODO 判断是否登录，未登录重定向到登录页面
 
-		fmt.Printf("test: %#v\n", ad)
+		ad.UserID = "1234"
+		fmt.Println("authorized ", ad.UserID)
 		server.FinishAuthorizeRequest(resp, c.Request, ad)
 	}
 	if resp.ErrCode != nil {
@@ -148,7 +149,15 @@ func handleOIDCAuthorize(c *gin.Context) {
 }
 
 func handleOIDCToken(c *gin.Context) {
-
+	resp := protocol.NewResponse()
+	if ad := server.HandleTokenRequest(resp, c.Request); ad != nil {
+		fmt.Println(ad.UserID)
+		server.FinishTokenRequest(resp, c.Request, ad)
+	}
+	if resp.ErrCode != nil {
+		fmt.Println("ERROR: ", resp.ErrCode)
+	}
+	protocol.OutputJSON(resp, c.Writer, c.Request)
 }
 
 func handleOIDCUserInfo(c *gin.Context) {

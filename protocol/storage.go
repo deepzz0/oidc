@@ -13,10 +13,10 @@ type Storage interface {
 	// Client loads the client by id (client_id)
 	Client(clientID string) (Client, error)
 	// UserInfoScopes get user info from scopes
-	UserInfoScopes(scopes []string) (map[string]interface{}, error)
+	UserInfoScopes(uid string, scopes []Scope) (map[string]interface{}, error)
 
 	// SaveAuthorize saves authorize data.
-	SaveAuthorize(code string, exp int, data *AuthorizeData) error
+	SaveAuthorize(code string, data *AuthorizeData, exp int) error
 	// LoadAuthorize looks up AuthorizeData by a code.
 	// Client information MUST be loaded together.
 	// Optionally can return error if expired.
@@ -26,11 +26,11 @@ type Storage interface {
 
 	// SaveAccess writes AccessData.
 	// If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
-	SaveAccess(token string, data *AuthorizeData, exp int) error
+	SaveAccess(token string, data *AccessData, exp int) error
 	// LoadAccess retrieves access data by token. Client information MUST be loaded together.
 	// AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 	// Optionally can return error if expired.
-	LoadAccess(token string) (data *AuthorizeData, err error)
+	LoadAccess(token string) (data *AccessData, err error)
 	// RemoveAccess revokes or deletes an AccessData.
 	RemoveAccess(token string) error
 
@@ -39,7 +39,7 @@ type Storage interface {
 	// LoadRefresh retrieves refresh AccessData. Client information MUST be loaded together.
 	// AuthorizeData and AccessData DON'T NEED to be loaded if not easily available.
 	// Optionally can return error if expired.
-	LoadRefresh(token string) (data *AuthorizeData, err error)
+	LoadRefresh(token string) (data *AccessData, err error)
 	// RemoveRefresh revokes or deletes refresh AccessData.
 	RemoveRefresh(token string) error
 }

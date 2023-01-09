@@ -44,6 +44,16 @@ const (
 	GrantTypeSAML2Bearer = "urn:ietf:params:oauth:grant-type:saml2-bearer"
 )
 
+// IsSupportedGrantType check grant type with client
+func IsSupportedGrantType(types []GrantType, ty GrantType) bool {
+	for _, v := range types {
+		if v == ty {
+			return true
+		}
+	}
+	return false
+}
+
 // TokenType grant token type
 type TokenType string
 
