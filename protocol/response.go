@@ -67,7 +67,7 @@ func (resp *Response) GetStatusCode() int {
 	}
 	if resp.ErrCode != nil {
 		// define status code
-		e, ok := resp.ErrCode.(Error)
+		e, ok := resp.ErrCode.(*Error)
 		if !ok {
 			return http.StatusBadRequest
 		}

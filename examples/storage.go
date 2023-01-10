@@ -1,7 +1,12 @@
 // Package examples provides ...
 package examples
 
-import "github.com/deepzz0/oidc/protocol"
+import (
+	"fmt"
+	"time"
+
+	"github.com/deepzz0/oidc/protocol"
+)
 
 // TestStorage storage
 type TestStorage struct {
@@ -51,9 +56,9 @@ func (s *TestStorage) UserInfoScopes(uid string, scopes []protocol.Scope) (map[s
 			info["phone_number"] = "1234567890"
 			info["phone_number_verified"] = true
 		case protocol.ScopeProfile:
-
+			info["profile"] = "https://example.com/profile"
 		case protocol.ScopeOpenID:
-
+			info["sub"] = "1234"
 		}
 	}
 	return info, nil
@@ -61,7 +66,7 @@ func (s *TestStorage) UserInfoScopes(uid string, scopes []protocol.Scope) (map[s
 
 // SaveAuthorize saves authorize data.
 func (s *TestStorage) SaveAuthorize(code string, data *protocol.AuthorizeData, exp int) error {
-	// TODO ignore exp
+	fmt.Println("save authorize: ", code)
 	s.authorize[code] = data
 	return nil
 }
@@ -70,8 +75,9 @@ func (s *TestStorage) SaveAuthorize(code string, data *protocol.AuthorizeData, e
 // Client information MUST be loaded together.
 // Optionally can return error if expired.
 func (s *TestStorage) LoadAuthorize(code string) (data *protocol.AuthorizeData, err error) {
+	fmt.Println("load authorize: ", code)
 	data, ok := s.authorize[code]
-	if !ok {
+	if !ok || data.CreatedAt.Add(time.Second*time.Duration(data.ExpiresIn)).Before(time.Now()) {
 		return nil, protocol.ErrNotFoundEntity
 	}
 	return data, nil
@@ -86,7 +92,6 @@ func (s *TestStorage) RemoveAuthorize(code string) error {
 // SaveAccess writes AccessData.
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
 func (s *TestStorage) SaveAccess(token string, data *protocol.AccessData, exp int) error {
-	// TODO ingored exp
 	s.access[token] = data
 	return nil
 }
@@ -96,7 +101,7 @@ func (s *TestStorage) SaveAccess(token string, data *protocol.AccessData, exp in
 // Optionally can return error if expired.
 func (s *TestStorage) LoadAccess(token string) (data *protocol.AccessData, err error) {
 	data, ok := s.access[token]
-	if !ok {
+	if !ok || data.CreatedAt.Add(time.Second*time.Duration(data.ExpiresIn)).Before(time.Now()) {
 		return nil, protocol.ErrNotFoundEntity
 	}
 	return data, nil
@@ -110,7 +115,6 @@ func (s *TestStorage) RemoveAccess(token string) error {
 
 // SaveRefresh save refresh token
 func (s *TestStorage) SaveRefresh(refresh, token string, exp int) (err error) {
-	// TODO ignored exp
 	s.refresh[refresh] = token
 	return nil
 }

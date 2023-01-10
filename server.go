@@ -251,6 +251,9 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("check auth error"), "", "")
 		return nil
 	}
+	if req.ClientID == "" {
+		req.ClientID = auth.Username
+	}
 	// must have a valid client
 	cli, err := s.getClient(auth, resp)
 	if err != nil {

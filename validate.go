@@ -140,7 +140,7 @@ func ValidateScopes(cli protocol.Client, scopes []string) ([]string, bool) {
 			scope == protocol.ScopeAddress ||
 			scope == protocol.ScopePhone ||
 			scope == protocol.ScopeOfflineAccess) &&
-			!cli.IsScopeAllowed(scope) {
+			!cli.IsScopeAllowed(scope) { // ignore unknown scope
 			scopes[i] = scopes[len(scopes)-1]
 			scopes = scopes[:len(scopes)-1]
 		}

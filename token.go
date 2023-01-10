@@ -13,15 +13,24 @@ import (
 	"github.com/google/uuid"
 )
 
-var defaultAESKey = []byte{89, 88, 86, 48, 97, 71, 57, 121, 97, 88, 112, 104, 100, 71, 108, 118}
+var (
+	defaultAESKey        = []byte{89, 88, 86, 48, 97, 71, 57, 121, 97, 88, 112, 104, 100, 71, 108, 118}
+	testHookGenerateCode func() string
+)
 
 // GenerateAuthorizeCodeAndSave default authorize code generator
 func (s *Server) GenerateAuthorizeCodeAndSave(req *protocol.AuthorizeData) (code string, err error) {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return
+	// test hook
+	if testHookGenerateCode == nil {
+		var id uuid.UUID
+		id, err = uuid.NewRandom()
+		if err != nil {
+			return
+		}
+		code = base64.RawURLEncoding.EncodeToString(id[:])
+	} else {
+		code = testHookGenerateCode()
 	}
-	code = base64.RawURLEncoding.EncodeToString(id[:])
 
 	exps := req.Client.ExpirationOptions()
 	req.CreatedAt = time.Now()
@@ -33,12 +42,20 @@ func (s *Server) GenerateAuthorizeCodeAndSave(req *protocol.AuthorizeData) (code
 func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 	genRefresh bool) (token, refresh string, err error) {
 
-	// access token
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return
+	// access token, test hook
+	var (
+		tokenID string
+		id      uuid.UUID
+	)
+	if testHookGenerateCode == nil {
+		id, err = uuid.NewRandom()
+		if err != nil {
+			return
+		}
+		tokenID = base64.RawURLEncoding.EncodeToString(id[:])
+	} else {
+		token = testHookGenerateCode()
 	}
-	tokenID := base64.RawURLEncoding.EncodeToString(id[:])
 	// bearer token
 	now := time.Now().UTC()
 	exps := req.Client.ExpirationOptions()
@@ -54,7 +71,7 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    s.options.Issuer,
-			Subject:   req.UserData["sub"].(string),
+			Subject:   req.UserID,
 			ID:        tokenID,
 			Audience:  []string{req.Client.ClientID()},
 		}
@@ -94,12 +111,15 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 	}
 	// refresh token
 	if genRefresh {
-		var id uuid.UUID
-		id, err = uuid.NewRandom()
-		if err != nil {
-			return
+		if testHookGenerateCode == nil {
+			id, err = uuid.NewRandom()
+			if err != nil {
+				return
+			}
+			refresh = base64.RawURLEncoding.EncodeToString(id[:])
+		} else {
+			refresh = testHookGenerateCode()
 		}
-		refresh = base64.RawURLEncoding.EncodeToString(id[:])
 		err = s.options.Storage.SaveRefresh(refresh, token, exps.RefreshTokenExpiration)
 	}
 	return

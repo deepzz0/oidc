@@ -12,11 +12,11 @@ func (s *Server) handleRefreshTokenRequest(resp *protocol.Response, r *http.Requ
 
 	// validate grant type
 	if !ValidateGrantType(req.Client.GrantTypes(), protocol.GrantTypeRefreshToken) {
-		return protocol.ErrInvalidGrant.Desc("unsupported grant type: refresh_token")
+		return protocol.ErrInvalidRequest.Desc("unsupported grant type: refresh_token")
 	}
 	// refresh_token is required
 	if req.RefreshToken == "" {
-		return protocol.ErrInvalidGrant.Desc("refresh_token is required")
+		return protocol.ErrInvalidRequest.Desc("refresh_token is required")
 	}
 
 	// auth data
