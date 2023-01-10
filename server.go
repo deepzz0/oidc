@@ -268,9 +268,9 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 	case protocol.GrantTypeRefreshToken:
 		err = s.handleRefreshTokenRequest(resp, r, req)
 	case protocol.GrantTypePassword:
-
+		err = s.handlePasswordRequest(resp, r, req)
 	case protocol.GrantTypeClientCredentials:
-
+		err = s.handleCredentialsRequest(resp, r, req)
 	case protocol.GrantTypeImplicit:
 		// nothing todo
 	case protocol.GrantTypeJwtBearer:
@@ -291,15 +291,20 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 
 // FinishTokenRequest token request finish
 func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, req *protocol.AccessRequest) {
-	if req.UserID == "" {
-		resp.SetErrorURI(protocol.ErrAccessDenied, "", "")
-		return
-	}
-	// create access token
-	ui, err := s.options.Storage.UserInfoScopes(req.UserID, req.Scope)
-	if err != nil {
-		resp.SetErrorURI(protocol.ErrAccessDenied.Wrap(err), "", "")
-		return
+	var (
+		ui  map[string]interface{}
+		err error
+	)
+	if req.GrantType != protocol.GrantTypeClientCredentials {
+		if req.UserID == "" {
+			resp.SetErrorURI(protocol.ErrAccessDenied, "", "")
+			return
+		}
+		ui, err = s.options.Storage.UserInfoScopes(req.UserID, req.Scope)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrAccessDenied.Wrap(err), "", "")
+			return
+		}
 	}
 	ret := &protocol.AccessData{
 		AccessRequest: req,

@@ -451,6 +451,110 @@ func TestTokenRefreshToken(t *testing.T) {
 	}
 }
 
+var passwordCases = []testcase{
+	// no username or password
+	{
+		vals: url.Values{
+			"grant_type": {"password"},
+		},
+		expected: protocol.ErrInvalidGrant,
+	},
+	// invalid username or password
+	{
+		vals: url.Values{
+			"grant_type": {"password"},
+			"username":   {"1234"},
+			"password":   {"1234"},
+		},
+		expected: protocol.ErrAccessDenied,
+	},
+	// ok: password
+	{
+		vals: url.Values{
+			"grant_type": {"password"},
+			"username":   {"hello"},
+			"password":   {"world"},
+		},
+		expected: nil,
+	},
+}
+
+func TestTokenPassword(t *testing.T) {
+	for i, v := range passwordCases {
+		url := issuer + "/token"
+		r := httptest.NewRequest(http.MethodPost, url, strings.NewReader(v.vals.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.SetBasicAuth("test_client_id", "aabbccdd")
+		w := httptest.NewRecorder()
+
+		resp := protocol.NewResponse()
+		req := server.HandleTokenRequest(resp, r)
+		if i < 1 { // valid by next
+			assertExpectedEqualError(t, v.expected, resp.ErrCode)
+		}
+
+		// access ok
+		if resp.ErrCode == nil {
+			// validate username & password
+			if req.Username == "hello" && req.Password == "world" {
+				req.UserID = "1234"
+			}
+			server.FinishTokenRequest(resp, r, req)
+			assertExpectedEqualError(t, v.expected, resp.ErrCode)
+			if resp.ErrCode != nil {
+				return
+			}
+
+			err := protocol.OutputJSON(resp, w, r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assert.Equal(t, 200, w.Code)
+			assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"])
+			assert.Equal(t, "test_hook_code", resp.Output["refresh_token"])
+			assert.EqualValues(t, "Bearer", resp.Output["token_type"])
+		}
+	}
+}
+
+var credentialsCases = []testcase{
+	// ok
+	{
+		vals: url.Values{
+			"grant_type": {"client_credentials"},
+		},
+		expected: nil,
+	},
+}
+
+func TestTokenCredentials(t *testing.T) {
+	for _, v := range credentialsCases {
+		url := issuer + "/token"
+		r := httptest.NewRequest(http.MethodPost, url, strings.NewReader(v.vals.Encode()))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.SetBasicAuth("test_client_id", "aabbccdd")
+		w := httptest.NewRecorder()
+
+		resp := protocol.NewResponse()
+		req := server.HandleTokenRequest(resp, r)
+		assertExpectedEqualError(t, v.expected, resp.ErrCode)
+
+		// access ok
+		if resp.ErrCode == nil {
+			server.FinishTokenRequest(resp, r, req)
+
+			err := protocol.OutputJSON(resp, w, r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assert.Equal(t, 200, w.Code)
+
+			assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"])
+			assert.EqualValues(t, "Bearer", resp.Output["token_type"])
+		}
+	}
+}
+
 func assertExpectedEqualError(t *testing.T, expected, errcode error) {
 	if expected == nil && errcode != nil {
 		t.Fatalf("expected: %v, but got: %v", expected, errcode)
