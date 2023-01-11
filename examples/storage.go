@@ -85,6 +85,7 @@ func (s *TestStorage) LoadAuthorize(code string) (data *protocol.AuthorizeData, 
 
 // RemoveAuthorize revokes or deletes the authorization code.
 func (s *TestStorage) RemoveAuthorize(code string) error {
+	fmt.Println("remove authorize: ", code)
 	delete(s.authorize, code)
 	return nil
 }

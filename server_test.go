@@ -198,10 +198,7 @@ var authorizeCases = []testcase{
 // example:
 //  client_id=xxx&response_type=code&redirect_uri=xxx&state=xxx
 func TestAuthorizationEndpoint(t *testing.T) {
-	for i, v := range authorizeCases {
-		if i != 6 {
-			continue
-		}
+	for _, v := range authorizeCases {
 		url := issuer + "/autorize?" + v.vals.Encode()
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
