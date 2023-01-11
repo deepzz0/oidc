@@ -225,7 +225,7 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
 				return
 			}
-			userData, err := s.options.Storage.UserInfoScopes(req.UserID, req.Scope)
+			userData, err := s.options.Storage.UserDataScopes(req.UserID, req.Scope)
 			if err != nil {
 				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
 				return
@@ -315,7 +315,7 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 // FinishTokenRequest token request finish
 func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, req *protocol.AccessRequest) {
 	var (
-		ui  map[string]interface{}
+		ui  interface{}
 		err error
 	)
 	if req.GrantType != protocol.GrantTypeClientCredentials {
@@ -323,7 +323,7 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 			resp.SetErrorURI(protocol.ErrAccessDenied, "", "")
 			return
 		}
-		ui, err = s.options.Storage.UserInfoScopes(req.UserID, req.Scope)
+		ui, err = s.options.Storage.UserDataScopes(req.UserID, req.Scope)
 		if err != nil {
 			resp.SetErrorURI(protocol.ErrAccessDenied.Wrap(err), "", "")
 			return

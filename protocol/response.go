@@ -86,8 +86,6 @@ func (resp *Response) GetRedirectURL() (string, error) {
 		q = u.Query()
 	case ResponseModeFragment:
 		q = url.Values{}
-	case ResponseModeFormPost:
-
 	default: // query
 		q = u.Query()
 	}

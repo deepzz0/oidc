@@ -41,8 +41,8 @@ func (s *TestStorage) Client(clientID string) (protocol.Client, error) {
 	return cli, nil
 }
 
-// UserInfoScopes get user info from scopes
-func (s *TestStorage) UserInfoScopes(uid string, scopes []protocol.Scope) (map[string]interface{}, error) {
+// UserDataScopes get user info from scopes
+func (s *TestStorage) UserDataScopes(uid string, scopes []protocol.Scope) (interface{}, error) {
 	if uid != "1234" {
 		return nil, protocol.ErrNotFoundEntity
 	}

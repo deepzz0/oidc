@@ -91,9 +91,9 @@ type AccessRequest struct {
 type AccessData struct {
 	*AccessRequest
 
-	UserData  map[string]interface{} `json:"user_data"`
-	CreatedAt time.Time              `json:"created_at"`
-	Scope     SpaceDelimitedArr      `json:"scope"`
+	UserData  interface{}       `json:"user_data"`
+	CreatedAt time.Time         `json:"created_at"`
+	Scope     SpaceDelimitedArr `json:"scope"`
 
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`

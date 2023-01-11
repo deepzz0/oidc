@@ -12,8 +12,8 @@ var ErrNotFoundEntity = errors.New("not found entity")
 type Storage interface {
 	// Client loads the client by id (client_id)
 	Client(clientID string) (Client, error)
-	// UserInfoScopes get user info from scopes
-	UserInfoScopes(uid string, scopes []Scope) (map[string]interface{}, error)
+	// UserDataScopes get user info by scopes
+	UserDataScopes(uid string, scopes []Scope) (interface{}, error)
 
 	// SaveAuthorize saves authorize data.
 	SaveAuthorize(code string, data *AuthorizeData, exp int) error
