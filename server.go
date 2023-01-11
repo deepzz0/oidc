@@ -296,7 +296,7 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 	}
 	// validate grant type
 	if !ValidateGrantType(req.Client.GrantTypes(), req.GrantType) {
-		resp.SetErrorURI(protocol.ErrInvalidGrant.Desc("unsupported grant type: authorization_code"), "", "")
+		resp.SetErrorURI(protocol.ErrUnsupportedGrantType.Desc("unsupported grant type: "+string(req.GrantType)), "", "")
 		return nil
 	}
 	var grantType = protocol.GrantType(r.FormValue("grant_type"))

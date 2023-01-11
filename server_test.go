@@ -2,7 +2,6 @@
 package oidc
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -23,6 +22,7 @@ func init() {
 	server = NewServer(
 		WithIssuer(issuer),
 		WithStorage(examples.NewTestStorage()),
+		WithDefaultScopes([]string{protocol.ScopeEmail}),
 	)
 	// inject code & token generate
 	testHookGenerateCode = func() string {
@@ -214,14 +214,13 @@ func TestAuthorization(t *testing.T) {
 
 				assert.Equal(t, "http://localhost:9000/oidc/callback?code=test_hook_code&state=test_state", location)
 				if len(v.vals["scope"]) > 1 {
-					fmt.Println(v.vals["scope"])
 					t.Log(resp.Output)
 				}
 			case "token":
 				assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"], resp.Output)
 				assert.EqualValues(t, "Bearer", resp.Output["token_type"], resp.Output)
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=3D3etRBHQjqKEhfh3_kr6Q&expires_in=3600&state=test_state&token_type=Bearer", location)
+				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=3D3etRBHQjqKEhfh3_kr6Q&expires_in=3600&scope=email&state=test_state&token_type=Bearer", location)
 			case "id_token":
 				assert.Equal(t, "eyJhbGciOiJSUzI1NiJ9.eyJlbWFpbCI6ImhlbGxvQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.V_S8fSJ9IjAkYANfRv9czLNyJcUbTxU8CY8DhsJYkF9mmY2Y8qUGGjQ2t2avOWRHbngKfpUfhPQanohdoNz65fBFupNP2g0rRSNY3NRZShU_VMVEKOuid4FDEJAId52czadoxnyHJ2pSQX9HC8JkC0BEq1E76HaU0nc8qAZ9IBwoKDUx6oVGMlmGIr8q2q-EmR8D0kX0fKLF0OnFckFicQUClxbExkxRXSXAzyVjLbC928R--J2Tv62Sw9mkB-K23Qcw2bPmHpxy5QpuMV6SdAQ9l7jNX9maNG_UB9NBDcsoVbD4U7cIfYiO73HXRz_VFFECXmfTPJe9yCtd4Xpp_g", resp.Output["id_token"], resp.Output)
 

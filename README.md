@@ -13,14 +13,15 @@ Golang OAuth2/OIDC Server Library.
 
 - [x] Authorization Code
 - [ ] PKCE
-- [ ] Client Credentials
+- [x] Client Credentials
 - [ ] Device Code
-- [ ] Refresh Token
-- [ ] Implicit Flow `Legacy`
-- [ ] Password Grant `Legacy`
+- [x] Refresh Token
+- [x] Implicit Flow `Legacy`
+- [x] Password Grant `Legacy`
 - [ ] Session Management
 - [ ] Revocation
 - [ ] Request Object
+- [x] Response Mode Support: `query`, `fragment`,`form_post`
 
 Have fun!
 

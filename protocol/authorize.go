@@ -65,6 +65,12 @@ const (
 	// application/x-www-form-urlencoded format.
 	// see https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html
 	ResponseModeFormPost ResponseMode = "form_post"
+
+	// This specification defines a new response mode for RFC6749 that uses HTML5 Web Messaging
+	// (a.k.a window.postMessage()) instead of the redirect for the Authorization Response
+	// from the Authorization Endpoint.
+	// https://datatracker.ietf.org/doc/html/draft-sakimura-oauth-wmrm-00
+	ResponseModeWebMessage ResponseMode = "web_message"
 )
 
 // Display specifies how the Authorization Server displays the authentication and consent

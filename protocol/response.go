@@ -26,8 +26,9 @@ func NewResponse() *Response {
 	header.Add("Pragma", "no-cache")
 	header.Add("Expires", "Fri, 01 Jan 1990 00:00:00 GMT")
 	return &Response{
-		Header: header,
-		Output: make(map[string]interface{}),
+		Header:       header,
+		Output:       make(map[string]interface{}),
+		ResponseMode: ResponseModeQuery,
 	}
 }
 
@@ -58,10 +59,6 @@ func (resp *Response) SetResponseMode(mode ResponseMode) {
 
 // GetStatusCode get the http status code
 func (resp *Response) GetStatusCode() int {
-	// redirect status code
-	if resp.RedirectURL != "" {
-		return http.StatusFound
-	}
 	if resp.ErrCode != nil {
 		// define status code
 		e, ok := resp.ErrCode.(*Error)
@@ -69,6 +66,16 @@ func (resp *Response) GetStatusCode() int {
 			return http.StatusBadRequest
 		}
 		return e.statusCode
+	}
+	// judge response mode
+	switch resp.ResponseMode {
+	case ResponseModeFormPost:
+		return http.StatusOK
+	default:
+		// redirect status code
+		if resp.RedirectURL != "" {
+			return http.StatusFound
+		}
 	}
 	return http.StatusOK
 }
@@ -83,10 +90,10 @@ func (resp *Response) GetRedirectURL() (string, error) {
 	var q url.Values
 	switch resp.ResponseMode {
 	case ResponseModeQuery:
-		q = u.Query()
+		q = u.Query() // prevous query string
 	case ResponseModeFragment:
 		q = url.Values{}
-	default: // query
+	default: // default query
 		q = u.Query()
 	}
 	// add parameters
