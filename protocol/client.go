@@ -69,6 +69,21 @@ const (
 	ClientAssertionTypeSMAL2Bearer = "urn:ietf:params:oauth:client-assertion-type:saml2-bearer"
 )
 
+// Expirations settings expiration
+type Expirations struct {
+	// Authorize code expires
+	CodeExpiration int
+	// Access token expires
+	AccessTokenExpiration int
+	// Refresh token expires
+	RefreshTokenExpiration int
+	// ID token expires
+	IDTokenExpiration int
+
+	// Device code polling interval
+	PollingInterval int
+}
+
 // DefaultExpirations default expirations
 var DefaultExpirations = Expirations{
 	CodeExpiration:         600,  // 10m
@@ -102,19 +117,4 @@ type Client interface {
 	DeviceAuthPath() string
 	// ExpirationOptions client expirations, seconds
 	ExpirationOptions() Expirations
-}
-
-// Expirations settings expiration
-type Expirations struct {
-	// Authorize code expires
-	CodeExpiration int
-	// Access token expires
-	AccessTokenExpiration int
-	// Refresh token expires
-	RefreshTokenExpiration int
-	// ID token expires
-	IDTokenExpiration int
-
-	// Device code polling interval
-	PollingInterval int
 }

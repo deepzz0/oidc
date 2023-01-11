@@ -11,13 +11,10 @@ import (
 	"github.com/deepzz0/oidc/protocol"
 )
 
+// see https://www.rfc-editor.org/rfc/rfc6749#section-4.1
 func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http.Request,
 	req *protocol.AccessRequest) error {
 
-	// validate grant type
-	if !ValidateGrantType(req.Client.GrantTypes(), protocol.GrantTypeAuthorizationCode) {
-		return protocol.ErrInvalidGrant.Desc("unsupported grant type: authorization_code")
-	}
 	// code is required, must be a valid authorization code
 	if req.Code == "" {
 		return protocol.ErrInvalidGrant.Desc("code is required")

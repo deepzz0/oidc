@@ -7,13 +7,10 @@ import (
 	"github.com/deepzz0/oidc/protocol"
 )
 
+// see https://www.rfc-editor.org/rfc/rfc6749#section-6
 func (s *Server) handleRefreshTokenRequest(resp *protocol.Response, r *http.Request,
 	req *protocol.AccessRequest) error {
 
-	// validate grant type
-	if !ValidateGrantType(req.Client.GrantTypes(), protocol.GrantTypeRefreshToken) {
-		return protocol.ErrInvalidRequest.Desc("unsupported grant type: refresh_token")
-	}
 	// refresh_token is required
 	if req.RefreshToken == "" {
 		return protocol.ErrInvalidRequest.Desc("refresh_token is required")

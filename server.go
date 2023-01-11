@@ -127,7 +127,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	var openIDScope bool
 	req.Scope, openIDScope = ValidateScopes(cli, req.Scope, s.options.DefaultScopes)
 	if len(req.Scope) == 0 {
-		resp.SetErrorURI(protocol.ErrInvalidScope, "", "")
+		resp.SetErrorURI(protocol.ErrInvalidScope, "", req.State)
 		return nil
 	}
 	if openIDScope { // oidc
@@ -202,6 +202,10 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 			resp.Output["code"] = code
 			resp.Output["state"] = req.State
 		case protocol.ResponseTypeToken:
+			// The implicit grant type does not include client authentication, and relies on the presence of the
+			// resource owner and the registration of the redirection URI.
+			// The redirection URI includes the access token in the URI fragment.
+			// see https://www.rfc-editor.org/rfc/rfc6749#section-4.2
 			resp.SetResponseMode(protocol.ResponseModeFragment)
 			// generate & save token
 			accessReq := &protocol.AccessRequest{
@@ -211,7 +215,7 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 
 				UserID:          req.UserID,
 				Client:          req.Client,
-				GenerateRefresh: false,
+				GenerateRefresh: false, // do not return refresh_token
 			}
 			s.FinishTokenRequest(resp, r, accessReq)
 			if req.State != "" && resp.ErrCode == nil {
@@ -268,22 +272,33 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
 		return nil
 	}
-	// client authentication
-	auth := s.getClientAuth(r, s.options.AllowClientSecretInParams)
-	if auth == nil {
-		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("check auth error"), "", "")
+	// The client uses an extension grant type by specifying the grant type using an absolute URI (defined by
+	// the authorization server) as the value of the "grant_type" parameter of the token endpoint, and by adding
+	// any additional parameters necessary.
+	// https://www.rfc-editor.org/rfc/rfc6749#section-4.5
+	if !protocol.IsExtensionGrants(req.GrantType) {
+		// client authentication
+		auth := s.getClientAuth(r, s.options.AllowClientSecretInParams)
+		if auth == nil {
+			resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("check auth error"), "", "")
+			return nil
+		}
+		if req.ClientID == "" { // client_id from auth
+			req.ClientID = auth.Username
+		}
+		// must have a valid client
+		cli, err := s.getClient(auth, resp)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrUnauthorizedClient.Wrap(err), "", "")
+			return nil
+		}
+		req.Client = cli
+	}
+	// validate grant type
+	if !ValidateGrantType(req.Client.GrantTypes(), req.GrantType) {
+		resp.SetErrorURI(protocol.ErrInvalidGrant.Desc("unsupported grant type: authorization_code"), "", "")
 		return nil
 	}
-	if req.ClientID == "" {
-		req.ClientID = auth.Username
-	}
-	// must have a valid client
-	cli, err := s.getClient(auth, resp)
-	if err != nil {
-		resp.SetErrorURI(protocol.ErrUnauthorizedClient.Wrap(err), "", "")
-		return nil
-	}
-	req.Client = cli
 	var grantType = protocol.GrantType(r.FormValue("grant_type"))
 	switch grantType {
 	case protocol.GrantTypeAuthorizationCode:
@@ -294,16 +309,17 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 		err = s.handlePasswordRequest(resp, r, req)
 	case protocol.GrantTypeClientCredentials:
 		err = s.handleCredentialsRequest(resp, r, req)
-	case protocol.GrantTypeImplicit:
-		// nothing todo
 	case protocol.GrantTypeJwtBearer:
-
+		// TODO
+		fallthrough
 	case protocol.GrantTypeTokenExchange:
-
+		// TODO
+		fallthrough
 	case protocol.GrantTypeDeviceCode:
-
+		// TODO
+		fallthrough
 	default:
-		err = protocol.ErrUnsupportedGrantType.Desc("unknown grant type")
+		err = protocol.ErrUnsupportedGrantType.Desc("unknown grant type or not implements")
 	}
 	if err != nil {
 		resp.SetErrorURI(err.(protocol.Error), "", "")
