@@ -45,9 +45,7 @@ func OutputJSON(resp *Response, w http.ResponseWriter, r *http.Request) error {
 func responseFormPost(resp *Response, w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "text/html;charset=UTF-8")
 
-	w.Write([]byte(`<html>
- <head><title>Submit This Form</title></head>
- <body onload="javascript:document.forms[0].submit()">`))
+	w.Write([]byte(`<html><head><title>Submit This Form</title></head><body onload="javascript:document.forms[0].submit()">`))
 	// callback
 	w.Write([]byte(`<form method="post" action="` + resp.RedirectURL + `">`))
 	// fields

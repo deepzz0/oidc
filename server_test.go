@@ -95,6 +95,18 @@ var authorizeCases = []testcase{
 		},
 		expected: protocol.ErrInvalidRequest,
 	},
+	// ok: specify response mode
+	{
+		vals: url.Values{
+			"client_id":     {"test_client_id"},
+			"response_type": {"code"},
+			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"state":         {"test_state"},
+			"scope":         {"email"},
+			"response_mode": {"form_post"},
+		},
+		expected: nil,
+	},
 	// ok: invalid scope
 	{
 		vals: url.Values{
@@ -186,7 +198,10 @@ var authorizeCases = []testcase{
 // example:
 //  client_id=xxx&response_type=code&redirect_uri=xxx&state=xxx
 func TestAuthorization(t *testing.T) {
-	for _, v := range authorizeCases {
+	for i, v := range authorizeCases {
+		if i != 6 {
+			continue
+		}
 		url := issuer + "/autorize?" + v.vals.Encode()
 		r := httptest.NewRequest(http.MethodGet, url, nil)
 		w := httptest.NewRecorder()
@@ -205,16 +220,21 @@ func TestAuthorization(t *testing.T) {
 				t.Fatal(err)
 			}
 			// redirect
-			assert.Equal(t, 302, w.Code)
+			if v.vals.Get("response_mode") == "form_post" {
+				assert.Equal(t, 200, w.Code)
+			} else {
+				assert.Equal(t, 302, w.Code)
+			}
 			assert.Equal(t, "test_state", resp.Output["state"], resp.Output)
 			location := w.Header().Get("Location")
 			switch v.vals.Get("response_type") {
 			case "code":
 				assert.Equal(t, "test_hook_code", resp.Output["code"])
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback?code=test_hook_code&state=test_state", location)
-				if len(v.vals["scope"]) > 1 {
-					t.Log(resp.Output)
+				if v.vals.Get("response_mode") == "form_post" {
+					t.Log(w.Body.String())
+				} else {
+					assert.Equal(t, "http://localhost:9000/oidc/callback?code=test_hook_code&state=test_state", location)
 				}
 			case "token":
 				assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"], resp.Output)

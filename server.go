@@ -114,6 +114,9 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 		return nil
 	}
 	resp.SetRedirectURL(req.RedirectURI)
+	if req.ResponseMode != "" {
+		resp.ResponseMode = req.ResponseMode
+	}
 	// step. check resposne type
 	typesOK, err := ValidateResponseType(cli, req.ResponseType)
 	if err != nil {
