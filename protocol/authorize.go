@@ -96,6 +96,12 @@ const (
 	DisplayWap Display = "wap"
 )
 
+// IsValidDisplay whether display option is valid
+func IsValidDisplay(opt Display) bool {
+	return opt == DisplayPage || opt == DisplayPopup ||
+		opt == DisplayTouch || opt == DisplayWap
+}
+
 // Prompt Space delimited, case sensitive list of ASCII string values that specifies whether
 // the Authorization Server prompts the End-User for reauthentication and consent.
 type Prompt string
@@ -117,6 +123,12 @@ const (
 	// multiple accounts that they might have current sessions for.
 	PromptSelectAccount Prompt = "select_account"
 )
+
+// IsValidPrompt whether prompt option is valid
+func IsValidPrompt(opt Prompt) bool {
+	return opt == PromptNone || opt == PromptLogin ||
+		opt == PromptConsent || opt == PromptSelectAccount
+}
 
 // Scope OpenID Connect Clients use scope values, as defined in Section 3.3 of OAuth 2.0
 // [RFC6749], to specify what access privileges are being requested for Access Tokens. The

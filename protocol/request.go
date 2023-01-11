@@ -106,3 +106,13 @@ type AccessData struct {
 
 	Client Client `json:"-"`
 }
+
+// UserInfoRequest userinfo request
+type UserInfoRequest struct {
+	Token string
+
+	AccessData *AccessData
+}
+
+// UserInfoData userinfo data
+type UserInfoData = UserInfo

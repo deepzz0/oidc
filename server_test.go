@@ -149,7 +149,7 @@ var authorizeCases = []testcase{
 		},
 		expected: nil,
 	},
-	// ok: authorization_code/hybird
+	// ok: authorization_code/hybrid
 	{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
@@ -160,7 +160,7 @@ var authorizeCases = []testcase{
 		},
 		expected: nil,
 	},
-	// ok: authorization_code/hybird
+	// ok: authorization_code/hybrid
 	{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
@@ -171,7 +171,7 @@ var authorizeCases = []testcase{
 		},
 		expected: nil,
 	},
-	// ok: authorization_code/hybird
+	// ok: authorization_code/hybrid
 	{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
@@ -182,7 +182,7 @@ var authorizeCases = []testcase{
 		},
 		expected: nil,
 	},
-	// ok: authorization_code/hybird
+	// ok: authorization_code/hybrid
 	{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
@@ -197,7 +197,7 @@ var authorizeCases = []testcase{
 
 // example:
 //  client_id=xxx&response_type=code&redirect_uri=xxx&state=xxx
-func TestAuthorization(t *testing.T) {
+func TestAuthorizationEndpoint(t *testing.T) {
 	for i, v := range authorizeCases {
 		if i != 6 {
 			continue
@@ -350,7 +350,7 @@ func TestTokenAuthorizationCode(t *testing.T) {
 			expected: nil,
 		},
 	}
-	TestAuthorization(t)
+	TestAuthorizationEndpoint(t)
 
 	for i, v := range authorizationCodeCases {
 		url := issuer + "/token"
@@ -423,7 +423,7 @@ func TestTokenRefreshToken(t *testing.T) {
 			expected: nil,
 		},
 	}
-	TestAuthorization(t)
+	TestAuthorizationEndpoint(t)
 
 	authorizationCodeCases = []testcase{
 		// not form data
@@ -504,6 +504,7 @@ var passwordCases = []testcase{
 			"grant_type": {"password"},
 			"username":   {"hello"},
 			"password":   {"world"},
+			"scope":      {"email"},
 		},
 		expected: nil,
 	},
@@ -532,7 +533,7 @@ func TestTokenPassword(t *testing.T) {
 			server.FinishTokenRequest(resp, r, req)
 			assertExpectedEqualError(t, v, resp.ErrCode)
 			if resp.ErrCode != nil {
-				return
+				continue
 			}
 
 			err := protocol.OutputJSON(resp, w, r)
@@ -581,6 +582,71 @@ func TestTokenCredentials(t *testing.T) {
 
 			assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"])
 			assert.EqualValues(t, "Bearer", resp.Output["token_type"])
+		}
+	}
+}
+
+var userinfoCases = []testcase{
+	// no token
+	{
+		vals:     url.Values{},
+		expected: protocol.ErrInvalidToken,
+	},
+	// ok: token in header
+	{
+		vals:     url.Values{},
+		expected: nil,
+	},
+	// ok: token in query
+	{
+		vals: url.Values{
+			"access_token": {"3D3etRBHQjqKEhfh3_kr6Q"},
+		},
+		expected: nil,
+	},
+	// ok: token in body
+	{
+		vals: url.Values{
+			"access_token": {"3D3etRBHQjqKEhfh3_kr6Q"},
+		},
+		expected: nil,
+	},
+}
+
+func TestUserInfoEndpoint(t *testing.T) {
+	TestTokenPassword(t)
+
+	for i, v := range userinfoCases {
+		resp := protocol.NewResponse()
+		w := httptest.NewRecorder()
+		var r *http.Request
+		switch i {
+		case 0:
+			url := issuer + "/userinfo?" + v.vals.Encode()
+			r = httptest.NewRequest(http.MethodGet, url, nil)
+		case 1:
+			url := issuer + "/userinfo?" + v.vals.Encode()
+			r = httptest.NewRequest(http.MethodGet, url, nil)
+			r.Header.Set("Authorization", string(server.options.TokenType)+" "+"3D3etRBHQjqKEhfh3_kr6Q")
+		case 2:
+			url := issuer + "/userinfo?" + v.vals.Encode()
+			r = httptest.NewRequest(http.MethodGet, url, nil)
+		case 3:
+			url := issuer + "/userinfo"
+			r = httptest.NewRequest(http.MethodPost, url, strings.NewReader(v.vals.Encode()))
+		}
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req := server.HandleUserInfoRequest(resp, r)
+		assertExpectedEqualError(t, v, resp.ErrCode)
+		if req != nil {
+			server.FinishUserInfoRequest(resp, r, req)
+
+			err := protocol.OutputJSON(resp, w, r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assert.Equal(t, 200, w.Code)
+			t.Log(w.Body.String())
 		}
 	}
 }

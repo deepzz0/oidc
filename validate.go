@@ -197,7 +197,7 @@ func ValidateResponseType(cli protocol.Client, typ protocol.ResponseType) (Respo
 }
 
 // ValidateIDTokenHint validates the id_token_hint (if passed as parameter in the request)
-// and returns the `sub` claim TODO
+// and returns the `sub` claim
 func ValidateIDTokenHint(idTokenHit string) (string, error) {
 	if idTokenHit == "" {
 		return "", nil
@@ -247,4 +247,21 @@ func ValidateGrantType(types []protocol.GrantType, ty protocol.GrantType) bool {
 		}
 	}
 	return false
+}
+
+// ValidatePrompt validate prompt, set max_age=0 if prompt login is present
+func ValidatePrompt(prompts []string, maxAge int) (int, error) {
+	for _, v := range prompts {
+		p := protocol.Prompt(v)
+		if !protocol.IsValidPrompt(p) {
+			return 0, errors.New("Unsupported prompt parameter: " + v)
+		}
+		if p == protocol.PromptNone && len(prompts) > 1 {
+			return 0, errors.New("The prompt parameter 'none' must only be used as a signle value")
+		}
+		if p == protocol.PromptLogin {
+			maxAge = 0
+		}
+	}
+	return maxAge, nil
 }

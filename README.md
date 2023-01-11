@@ -21,6 +21,10 @@ Golang OAuth2/OIDC Server Library.
 - [ ] Session Management
 - [ ] Revocation
 - [ ] Request Object
+- [ ] JWT Profile
+- [ ] Token Exchange
+- [ ] SAML2 Bearer
+- [x] Hybrid Response Type
 - [x] Response Mode Support: `query`, `fragment`,`form_post`
 
 Have fun!

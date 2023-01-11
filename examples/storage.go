@@ -92,6 +92,7 @@ func (s *TestStorage) RemoveAuthorize(code string) error {
 // SaveAccess writes AccessData.
 // If RefreshToken is not blank, it must save in a way that can be loaded using LoadRefresh.
 func (s *TestStorage) SaveAccess(token string, data *protocol.AccessData, exp int) error {
+	fmt.Println("save access: ", token)
 	s.access[token] = data
 	return nil
 }
@@ -109,6 +110,7 @@ func (s *TestStorage) LoadAccess(token string) (data *protocol.AccessData, err e
 
 // RemoveAccess revokes or deletes an AccessData.
 func (s *TestStorage) RemoveAccess(token string) error {
+	fmt.Println("remove access: ", token)
 	delete(s.access, token)
 	return nil
 }

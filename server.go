@@ -15,6 +15,7 @@ import (
 
 	"github.com/deepzz0/oidc/protocol"
 
+	"github.com/fatih/structs"
 	"github.com/gorilla/schema"
 	"gopkg.in/square/go-jose.v2"
 )
@@ -54,7 +55,7 @@ func NewServer(options ...Option) *Server {
 	}
 }
 
-// HandleAuthorizeRequest authorization request handler
+// HandleAuthorizeRequest authorization endpoint
 func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request) *protocol.AuthorizeRequest {
 	// The authorization server MUST support the use of the HTTP "GET" method [RFC2616] for the authorization
 	// endpoint and MAY support the use of the "POST" method as well.
@@ -148,13 +149,24 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 			resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Implicit flow requires a nonce value"), "", req.State)
 			return nil
 		}
+		// check display
+		if req.Display != "" && !protocol.IsValidDisplay(req.Display) {
+			resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Invalid display option"), "", req.State)
+			return nil
+		}
+		// check prompt
+		req.MaxAge, err = ValidatePrompt(req.Prompt, req.MaxAge)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc(err.Error()), "", req.State)
+			return nil
+		}
 		// check id_token_hint
 		userID, err := ValidateIDTokenHint(req.IDTokenHint)
 		if err != nil {
 			resp.SetErrorURI(protocol.ErrLoginRequired.Desc("The id_token_hint is invalid"), "", req.State)
 			return nil
 		}
-		fmt.Println(userID)
+		req.UserID = userID
 	}
 	// step. check code challenge
 	if typesOK.ResponseTypeCode || typesOK.ResponseTypeDevice { // oauth2 flow
@@ -183,7 +195,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 // FinishAuthorizeRequest finish authorize request
 func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request, req *protocol.AuthorizeRequest) {
 	if req.UserID == "" { // check user authorized
-		resp.SetErrorURI(protocol.ErrAccessDenied, "", req.State)
+		resp.SetErrorURI(protocol.ErrLoginRequired, "", req.State)
 		return
 	}
 	// support hybrid
@@ -249,7 +261,7 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 }
 
-// HandleTokenRequest token request handler
+// HandleTokenRequest token endpoint
 func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *protocol.AccessRequest {
 	// The client MUST use the HTTP "POST" method when making access token requests.
 	// see https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2
@@ -401,6 +413,50 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 	}
 }
 
+// HandleUserInfoRequest userinfo endpoint
+func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request) *protocol.UserInfoRequest {
+	// The Client sends the UserInfo Request using either HTTP GET or HTTP POST. The Access Token obtained from an
+	// OpenID Connect Authentication Request MUST be sent as a Bearer Token, per Section 2 of OAuth 2.0 Bearer Token
+	// Usage [RFC6750].
+	// It is RECOMMENDED that the request use the HTTP GET method and the Access Token be sent using the Authorization
+	// header field.
+	// see https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Unsupported HTTP Method, should be GET or POST"), "", "")
+		return nil
+	}
+	err := r.ParseForm() // parse form
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
+		return nil
+	}
+	token := s.getBearerAuth(r)
+	if token == "" {
+		resp.SetErrorURI(protocol.ErrInvalidToken, "", "")
+		return nil
+	}
+
+	req := &protocol.UserInfoRequest{
+		Token: token,
+	}
+	req.AccessData, err = s.options.Storage.LoadAccess(req.Token)
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidToken.Wrap(err), "", "")
+		return nil
+	}
+	return req
+}
+
+// FinishUserInfoRequest userinfo request finish
+func (s *Server) FinishUserInfoRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
+	m, ok := req.AccessData.UserData.(map[string]interface{})
+	if ok {
+		resp.Output = m
+	} else {
+		resp.Output = structs.Map(req.AccessData.UserData)
+	}
+}
+
 func (s *Server) getClient(auth *BasicAuth, resp *protocol.Response) (protocol.Client, error) {
 	cli, err := s.options.Storage.Client(auth.Username)
 	if err == protocol.ErrNotFoundEntity {
@@ -441,6 +497,26 @@ func (s *Server) getClientAuth(r *http.Request, inParams bool) *BasicAuth {
 		return nil
 	}
 	return &BasicAuth{username, password}
+}
+
+// https://www.rfc-editor.org/rfc/rfc6750
+func (s *Server) getBearerAuth(r *http.Request) string {
+	auth := r.Header.Get("Authorization")
+	token := r.FormValue("access_token")
+	if auth == "" && token == "" {
+		return ""
+	}
+
+	if auth != "" {
+		sli := strings.SplitN(auth, " ", 2)
+		if len(sli) == 2 {
+			if sli[0] != string(s.options.TokenType) {
+				return ""
+			}
+			token = sli[1]
+		}
+	}
+	return token
 }
 
 func signPayload(key crypto.Signer, idToken interface{}) (string, error) {

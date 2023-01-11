@@ -3,6 +3,7 @@ module github.com/deepzz0/oidc
 go 1.17
 
 require (
+	github.com/fatih/structs v1.1.0
 	github.com/gin-gonic/gin v1.8.2
 	github.com/golang-jwt/jwt/v4 v4.4.1
 	github.com/google/uuid v1.3.0
