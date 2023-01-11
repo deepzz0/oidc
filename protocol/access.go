@@ -78,11 +78,11 @@ const (
 // JSON Web Token (JWT) [JWT].
 // https://openid.net/specs/openid-connect-core-1_0.html#IDToken
 type IDToken struct {
-	Issuer     string          `json:"iss"`
-	Subject    string          `json:"sub"` // User identifier
-	Audience   Audience        `json:"aud"` // Must contain oauth2 client_id
-	Expiration jwt.NumericDate `json:"exp"` // Expiration time on or after which the ID Token MUST NOT be accepted for processing.
-	IssuedAt   jwt.NumericDate `json:"iat"` // Time at which the JWT was issued
+	Issuer     string           `json:"iss"`
+	Subject    string           `json:"sub"` // User identifier
+	Audience   jwt.ClaimStrings `json:"aud"` // Must contain oauth2 client_id
+	Expiration jwt.NumericDate  `json:"exp"` // Expiration time on or after which the ID Token MUST NOT be accepted for processing.
+	IssuedAt   jwt.NumericDate  `json:"iat"` // Time at which the JWT was issued
 
 	// When a max_age request is made or when auth_time is requested as an Essential Claim, then this Claim is REQUIRED;
 	// otherwise, its inclusion is OPTIONAL.

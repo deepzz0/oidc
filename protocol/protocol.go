@@ -56,25 +56,3 @@ func (l *Locales) UnmarshalText(text []byte) error {
 	}
 	return nil
 }
-
-// Audience audience
-type Audience []string
-
-// UnmarshalJSON unmarshal json
-func (a *Audience) UnmarshalJSON(text []byte) error {
-	var i interface{}
-	err := json.Unmarshal(text, &i)
-	if err != nil {
-		return err
-	}
-	switch aud := i.(type) {
-	case []interface{}:
-		*a = make([]string, len(aud))
-		for i, audience := range aud {
-			(*a)[i] = audience.(string)
-		}
-	case string:
-		*a = []string{aud}
-	}
-	return nil
-}

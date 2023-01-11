@@ -61,19 +61,19 @@ type AccessRequest struct {
 	Password string `json:"password,omitempty" schema:"password"`
 
 	// urn:ietf:params:oauth:grant-type:jwt-bearer
-	Issuer    string          `json:"iss,omitempty"`
-	Subject   string          `json:"sub,omitempty"`
-	Audience  Audience        `json:"aud,omitempty"`
-	IssuedAt  jwt.NumericDate `json:"iat,omitempty"`
-	ExpiresAt jwt.NumericDate `json:"exp,omitempty"`
+	Issuer    string           `json:"iss,omitempty"`
+	Subject   string           `json:"sub,omitempty"`
+	Audience  jwt.ClaimStrings `json:"aud,omitempty"`
+	IssuedAt  jwt.NumericDate  `json:"iat,omitempty"`
+	ExpiresAt jwt.NumericDate  `json:"exp,omitempty"`
 	// urn:ietf:params:oauth:grant-type:token-exchange
-	subjectToken       string   `schema:"subject_token"`
-	subjectTokenType   string   `schema:"subject_token_type"`
-	actorToken         string   `schema:"actor_token"`
-	actorTokenType     string   `schema:"actor_token_type"`
-	resource           []string `schema:"resource"`
-	audience           Audience `schema:"audience"`
-	requestedTokenType string   `schema:"requested_token_type"`
+	subjectToken       string           `schema:"subject_token"`
+	subjectTokenType   string           `schema:"subject_token_type"`
+	actorToken         string           `schema:"actor_token"`
+	actorTokenType     string           `schema:"actor_token_type"`
+	resource           []string         `schema:"resource"`
+	audience           jwt.ClaimStrings `schema:"audience"`
+	requestedTokenType string           `schema:"requested_token_type"`
 	// urn:ietf:params:oauth:grant-type:device_code
 
 	// refresh_token & jwt-bearer & token-exchange
