@@ -1,7 +1,10 @@
 // Package protocol provides ...
 package protocol
 
-import "gopkg.in/square/go-jose.v2"
+import (
+	"github.com/golang-jwt/jwt/v4"
+	"gopkg.in/square/go-jose.v2"
+)
 
 // GrantType grant access type
 type GrantType string
@@ -75,15 +78,15 @@ const (
 // JSON Web Token (JWT) [JWT].
 // https://openid.net/specs/openid-connect-core-1_0.html#IDToken
 type IDToken struct {
-	Issuer     string   `json:"iss"`
-	Subject    string   `json:"sub"` // User identifier
-	Audience   Audience `json:"aud"` // Must contain oauth2 client_id
-	Expiration Time     `json:"exp"` // Expiration time on or after which the ID Token MUST NOT be accepted for processing.
-	IssuedAt   Time     `json:"iat"` // Time at which the JWT was issued
+	Issuer     string          `json:"iss"`
+	Subject    string          `json:"sub"` // User identifier
+	Audience   Audience        `json:"aud"` // Must contain oauth2 client_id
+	Expiration jwt.NumericDate `json:"exp"` // Expiration time on or after which the ID Token MUST NOT be accepted for processing.
+	IssuedAt   jwt.NumericDate `json:"iat"` // Time at which the JWT was issued
 
 	// When a max_age request is made or when auth_time is requested as an Essential Claim, then this Claim is REQUIRED;
 	// otherwise, its inclusion is OPTIONAL.
-	AuthTime Time `json:"auth_time,omitempty"`
+	AuthTime jwt.NumericDate `json:"auth_time,omitempty"`
 	// String value used to associate a Client session with an ID Token, and to mitigate replay attacks. If present in
 	// the ID Token, Clients MUST verify that the nonce Claim Value is equal to the value of the nonce parameter sent in
 	// the Authentication Request. If present in the Authentication Request, Authorization Servers MUST include a nonce
@@ -196,7 +199,7 @@ type UserInfo struct {
 	Address Address `json:"address,omitempty"`
 	// Time the End-User's information was last updated. Its value is a JSON number representing the number of seconds from
 	// 1970-01-01T0:0:0Z as measured in UTC until the date/time.
-	UpdatedAt Time `json:"updated_at,omitempty"`
+	UpdatedAt jwt.NumericDate `json:"updated_at,omitempty"`
 }
 
 // Address The Address Claim represents a physical mailing address.

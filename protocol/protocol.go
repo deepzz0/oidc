@@ -4,7 +4,6 @@ package protocol
 import (
 	"encoding/json"
 	"strings"
-	"time"
 
 	"golang.org/x/text/language"
 )
@@ -56,24 +55,6 @@ func (l *Locales) UnmarshalText(text []byte) error {
 		}
 	}
 	return nil
-}
-
-// Time time
-type Time time.Time
-
-// UnmarshalJSON unmarshal json
-func (t *Time) UnmarshalJSON(data []byte) error {
-	var i int64
-	if err := json.Unmarshal(data, &i); err != nil {
-		return err
-	}
-	*t = Time(time.Unix(i, 0).UTC())
-	return nil
-}
-
-// MarshalJSON marshal json
-func (t *Time) MarshalJSON() ([]byte, error) {
-	return json.Marshal(time.Time(*t).UTC().Unix())
 }
 
 // Audience audience

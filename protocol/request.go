@@ -1,7 +1,11 @@
 // Package protocol provides ...
 package protocol
 
-import "time"
+import (
+	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+)
 
 // AuthorizeRequest An Authentication Request is an OAuth 2.0 Authorization Request that requests that
 // the End-User be authenticated by the Authorization Server.
@@ -57,11 +61,11 @@ type AccessRequest struct {
 	Password string `json:"password,omitempty" schema:"password"`
 
 	// urn:ietf:params:oauth:grant-type:jwt-bearer
-	Issuer    string   `json:"iss,omitempty"`
-	Subject   string   `json:"sub,omitempty"`
-	Audience  Audience `json:"aud,omitempty"`
-	IssuedAt  Time     `json:"iat,omitempty"`
-	ExpiresAt Time     `json:"exp,omitempty"`
+	Issuer    string          `json:"iss,omitempty"`
+	Subject   string          `json:"sub,omitempty"`
+	Audience  Audience        `json:"aud,omitempty"`
+	IssuedAt  jwt.NumericDate `json:"iat,omitempty"`
+	ExpiresAt jwt.NumericDate `json:"exp,omitempty"`
 	// urn:ietf:params:oauth:grant-type:token-exchange
 	subjectToken       string   `schema:"subject_token"`
 	subjectTokenType   string   `schema:"subject_token_type"`
