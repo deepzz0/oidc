@@ -76,11 +76,13 @@ func (c *TestClient) ResponseTypes() []protocol.ResponseType {
 		protocol.ResponseTypeCode,
 		protocol.ResponseTypeToken,
 		protocol.ResponseTypeIDToken,
+		protocol.ResponseTypeNone,
+		protocol.ResponseTypeDevice,
+
 		protocol.ResponseTypeCodeToken,
 		protocol.ResponseTypeCodeIDToken,
 		protocol.ResponseTypeTokenIDToken,
 		protocol.ResponseTypeCodeTokenIDToken,
-		protocol.ResponseTypeNone,
 	}
 }
 
@@ -101,8 +103,7 @@ func (c *TestClient) GrantTypes() []protocol.GrantType {
 
 // IsScopeAllowed allowed scopes
 func (c *TestClient) IsScopeAllowed(scope string) bool {
-
-	return false
+	return scope == "scope1"
 }
 
 // PrivateKey loads the client private key

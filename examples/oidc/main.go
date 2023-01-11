@@ -22,6 +22,7 @@ var (
 	server = oidc.NewServer(
 		oidc.WithIssuer(issuer),
 		oidc.WithStorage(examples.NewTestStorage()),
+		oidc.WithDefaultScopes([]string{protocol.ScopeEmail}),
 	)
 )
 

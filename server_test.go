@@ -193,7 +193,7 @@ func TestAuthorization(t *testing.T) {
 
 		resp := protocol.NewResponse()
 		req := server.HandleAuthorizeRequest(resp, r)
-		assertExpectedEqualError(t, v.expected, resp.ErrCode)
+		assertExpectedEqualError(t, v, resp.ErrCode)
 		// authorization_code ok
 		if resp.ErrCode == nil {
 			// login user
@@ -274,7 +274,7 @@ var authorizationCodeCases = []testcase{
 			"grant_type": {"authorization_code"},
 			"code":       {"test_hook_code"},
 		},
-		expected: protocol.ErrInvalidGrant,
+		expected: protocol.ErrInvalidRequest,
 	},
 	// no redirect_uri
 	{
@@ -292,6 +292,17 @@ var authorizationCodeCases = []testcase{
 			"code":         {"test_hook_code"},
 			"client_id":    {"test_client_id"},
 			"redirect_uri": {"http://localhost"},
+		},
+		expected: protocol.ErrInvalidRequest,
+	},
+	// invalid AllowClientSecretInParams
+	{
+		vals: url.Values{
+			"grant_type":    {"authorization_code"},
+			"code":          {"test_hook_code"},
+			"client_id":     {"test_client_id"},
+			"client_secret": {"aabbccdd"},
+			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
 		},
 		expected: protocol.ErrInvalidRequest,
 	},
@@ -328,14 +339,14 @@ func TestTokenAuthorizationCode(t *testing.T) {
 		if i != 0 { // not form data
 			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		}
-		if i != 1 { // no client auth
+		if i != 1 && i != 6 { // no client auth
 			r.SetBasicAuth("test_client_id", "aabbccdd")
 		}
 		w := httptest.NewRecorder()
 
 		resp := protocol.NewResponse()
 		req := server.HandleTokenRequest(resp, r)
-		assertExpectedEqualError(t, v.expected, resp.ErrCode)
+		assertExpectedEqualError(t, v, resp.ErrCode)
 
 		// access ok
 		if resp.ErrCode == nil {
@@ -432,7 +443,7 @@ func TestTokenRefreshToken(t *testing.T) {
 
 		resp := protocol.NewResponse()
 		req := server.HandleTokenRequest(resp, r)
-		assertExpectedEqualError(t, v.expected, resp.ErrCode)
+		assertExpectedEqualError(t, v, resp.ErrCode)
 
 		// access ok
 		if resp.ErrCode == nil {
@@ -490,7 +501,7 @@ func TestTokenPassword(t *testing.T) {
 		resp := protocol.NewResponse()
 		req := server.HandleTokenRequest(resp, r)
 		if i < 1 { // valid by next
-			assertExpectedEqualError(t, v.expected, resp.ErrCode)
+			assertExpectedEqualError(t, v, resp.ErrCode)
 		}
 
 		// access ok
@@ -500,7 +511,7 @@ func TestTokenPassword(t *testing.T) {
 				req.UserID = "1234"
 			}
 			server.FinishTokenRequest(resp, r, req)
-			assertExpectedEqualError(t, v.expected, resp.ErrCode)
+			assertExpectedEqualError(t, v, resp.ErrCode)
 			if resp.ErrCode != nil {
 				return
 			}
@@ -537,7 +548,7 @@ func TestTokenCredentials(t *testing.T) {
 
 		resp := protocol.NewResponse()
 		req := server.HandleTokenRequest(resp, r)
-		assertExpectedEqualError(t, v.expected, resp.ErrCode)
+		assertExpectedEqualError(t, v, resp.ErrCode)
 
 		// access ok
 		if resp.ErrCode == nil {
@@ -555,16 +566,16 @@ func TestTokenCredentials(t *testing.T) {
 	}
 }
 
-func assertExpectedEqualError(t *testing.T, expected, errcode error) {
-	if expected == nil && errcode != nil {
-		t.Fatalf("expected: %v, but got: %v", expected, errcode)
+func assertExpectedEqualError(t *testing.T, v testcase, errcode error) {
+	if v.expected == nil && errcode != nil {
+		t.Fatalf("expected: %v, but got: %v", v.expected, errcode)
 	}
-	if expected != nil && errcode == nil {
-		t.Fatalf("expected: %v, but got: %v", expected, errcode)
+	if v.expected != nil && errcode == nil {
+		t.Fatalf("expected: %v, but got: %v", v.expected, errcode)
 	}
-	if expected != nil && errcode != nil {
-		if expected.(protocol.Error).ErrorCode != errcode.(protocol.Error).ErrorCode {
-			t.Fatalf("expected: %v, but got: %v", expected, errcode)
+	if v.expected != nil && errcode != nil {
+		if v.expected.(protocol.Error).ErrorCode != errcode.(protocol.Error).ErrorCode {
+			t.Fatalf("expected: %v, but got: %v, vals: %v", v.expected, errcode, v.vals)
 		}
 	}
 }

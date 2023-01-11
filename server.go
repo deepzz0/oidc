@@ -56,25 +56,33 @@ func NewServer(options ...Option) *Server {
 
 // HandleAuthorizeRequest authorization request handler
 func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request) *protocol.AuthorizeRequest {
-	err := r.ParseForm() // parse form
-	if err != nil {
-		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
-		return nil
-	}
-	// check method: must be GET or POST
+	// The authorization server MUST support the use of the HTTP "GET" method [RFC2616] for the authorization
+	// endpoint and MAY support the use of the "POST" method as well.
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Unsupported HTTP Method, should be GET or POST"), "", "")
 		return nil
 	}
-	// decode form params to struct
+	err := r.ParseForm() // parse form
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
+		return nil
+	}
+	// The query component MUST be retained when adding additional query parameters. The endpoint URI MUST NOT
+	// include a fragment component.
+	if r.URL.Fragment != "" {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("URI must not include a fragment component"), "", "")
+		return nil
+	}
+
+	// Decode form params to struct
 	req := new(protocol.AuthorizeRequest)
 	err = s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
 		return nil
 	}
-	// step. check client
+	// step. query client instance by storage
 	cli, err := s.options.Storage.Client(req.ClientID)
 	if err != nil {
 		if err == protocol.ErrNotFoundEntity {
@@ -107,14 +115,21 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 	resp.SetRedirectURL(req.RedirectURI)
 	// step. check resposne type
-	typesOK, err := ValidateResponseType(cli, string(req.ResponseType))
+	typesOK, err := ValidateResponseType(cli, req.ResponseType)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrUnsupportedResponseType.Wrap(err), "", req.State)
 		return nil
 	}
-	// step. check scopes
+	// step. If the client omits the scope parameter when requesting authorization, the authorization server
+	// MUST either process the request using a pre-defined default value or fail the request indicating an
+	// invalid scope. The authorization server SHOULD document its scope requirements and default value (if defined).
+	// https://www.rfc-editor.org/rfc/rfc6749#section-3.3
 	var openIDScope bool
-	req.Scope, openIDScope = ValidateScopes(cli, req.Scope)
+	req.Scope, openIDScope = ValidateScopes(cli, req.Scope, s.options.DefaultScopes)
+	if len(req.Scope) == 0 {
+		resp.SetErrorURI(protocol.ErrInvalidScope, "", "")
+		return nil
+	}
 	if openIDScope { // oidc
 		// "token" can't be provided by its own.
 		// https://openid.net/specs/openid-connect-core-1_0.html#Authentication
@@ -229,16 +244,24 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 
 // HandleTokenRequest token request handler
 func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *protocol.AccessRequest {
+	// The client MUST use the HTTP "POST" method when making access token requests.
+	// see https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2
+	if r.Method != http.MethodPost {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Unsupported HTTP Method, should be POST"), "", "")
+		return nil
+	}
 	err := r.ParseForm() // parse form
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
 		return nil
 	}
-	// https://openid.net/specs/openid-connect-core-1_0.html#TokenEndpoint
-	if r.Method != http.MethodPost {
-		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Unsupported HTTP Method, should be GET or POST"), "", "")
+	// The query component MUST be retained when adding additional query parameters. The endpoint URI MUST NOT
+	// include a fragment component.
+	if r.URL.Fragment != "" {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("URI must not include a fragment component"), "", "")
 		return nil
 	}
+
 	req := &protocol.AccessRequest{}
 	err = s.decoder.Decode(req, r.Form)
 	if err != nil {
@@ -376,6 +399,10 @@ func (s *Server) getClient(auth *BasicAuth, resp *protocol.Response) (protocol.C
 	return cli, nil
 }
 
+// Including the client credentials in the request-body using the two parameters is NOT RECOMMENDED and SHOULD be
+// limited to clients unable to directly utilize the HTTP Basic authentication scheme (or other password-based
+// HTTP authentication schemes).  The parameters can only be transmitted in the request-body and MUST NOT be
+// included in the request URI.
 func (s *Server) getClientAuth(r *http.Request, inParams bool) *BasicAuth {
 	if inParams {
 		// Allow for auth without password

@@ -84,13 +84,14 @@ type Client interface {
 	ClientID() string
 	// ClientSecret return client secret
 	ClientSecret() string
-	// RedirectURI return client redirect uri, multiple URLs by comma-separating
+	// RedirectURI return client redirect uri, multiple URLs by comma-separating.
+	// see https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2
 	RedirectURI() string
 	// ResponseTypes allowed authorize type
 	ResponseTypes() []ResponseType
 	// GrantTypes grant types
 	GrantTypes() []GrantType
-	// IsScopeAllowed allowed scopes
+	// IsScopeAllowed allowed custom unknown scopes
 	IsScopeAllowed(scope string) bool
 
 	// PrivateKey loads the client private key

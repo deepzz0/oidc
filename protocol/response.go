@@ -22,10 +22,7 @@ type Response struct {
 // NewResponse output
 func NewResponse() *Response {
 	header := http.Header{}
-	header.Add(
-		"Cache-Control",
-		"no-cache, no-store, max-age=0, must-revalidate",
-	)
+	header.Add("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate")
 	header.Add("Pragma", "no-cache")
 	header.Add("Expires", "Fri, 01 Jan 1990 00:00:00 GMT")
 	return &Response{
@@ -84,15 +81,13 @@ func (resp *Response) GetRedirectURL() (string, error) {
 	}
 
 	var q url.Values
-	// https://tools.ietf.org/html/rfc6749#section-4.2.2
-	// Fragment should be encoded as application/x-www-form-urlencoded (%-escaped,
-	// spaces are represented as '+')
-	// The stdlib URL#String() doesn't make that easy to accomplish, so build this ourselves
 	switch resp.ResponseMode {
 	case ResponseModeQuery:
 		q = u.Query()
 	case ResponseModeFragment:
 		q = url.Values{}
+	case ResponseModeFormPost:
+
 	default: // query
 		q = u.Query()
 	}
@@ -100,10 +95,13 @@ func (resp *Response) GetRedirectURL() (string, error) {
 	for n, v := range resp.Output {
 		q.Set(n, fmt.Sprint(v))
 	}
+	// https://tools.ietf.org/html/rfc6749#section-4.2.2
+	// Fragment should be encoded as application/x-www-form-urlencoded (%-escaped,
+	// spaces are represented as '+')
+	// The stdlib URL#String() doesn't make that easy to accomplish, so build this ourselves
 	if resp.ResponseMode == ResponseModeFragment {
-		u.Fragment = ""
-		redirectURI := u.String() + "#" + q.Encode()
-		return redirectURI, nil
+		u.Fragment = q.Encode()
+		return u.String(), nil
 	}
 	// Otherwise, update the query and encode normally
 	u.RawQuery = q.Encode()

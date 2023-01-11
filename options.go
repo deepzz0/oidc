@@ -27,7 +27,7 @@ type Options struct {
 
 	// Token type access: default Bearer
 	TokenType TokenType
-	// If true allows client secret algo in params: default false
+	// If true allows client secret algo in params, it's not recommended: default false
 	AllowClientSecretInParams bool
 	// If true allows access request using GET, else only POST: default false
 	AllowGetAccessRequest bool
@@ -39,6 +39,8 @@ type Options struct {
 	SupportedRequestObject bool
 	// Retain token after refresh
 	RetainTokenAfrerRefresh bool
+	// DefaultScopes is client request scope is empty
+	DefaultScopes []protocol.Scope
 
 	Storage protocol.Storage
 }
@@ -103,5 +105,12 @@ func WithRetainTokenAfterRefresh(s bool) Option {
 func WithStorage(storage protocol.Storage) Option {
 	return func(opts *Options) {
 		opts.Storage = storage
+	}
+}
+
+// WithDefaultScopes set default scopes
+func WithDefaultScopes(scopes []protocol.Scope) Option {
+	return func(opts *Options) {
+		opts.DefaultScopes = scopes
 	}
 }

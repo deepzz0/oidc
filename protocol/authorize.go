@@ -2,6 +2,8 @@
 package protocol
 
 // ResponseType authorization endpoint is used by the authorization code grant type and implicit grant type flows
+// If an authorization request is missing the "response_type" parameter, or if the response type is not understood,
+// the authorization server MUST return an error response as described in Section 4.1.2.1.
 // https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1
 type ResponseType string
 
@@ -24,22 +26,14 @@ const (
 	// The Response Type none SHOULD NOT be combined with other Response Types.
 	// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#none
 	ResponseTypeNone ResponseType = "none"
+	// "device" is custom response_type for Device Code Flow
+	ResponseTypeDevice = "device"
 
 	ResponseTypeCodeToken        = "code token"
 	ResponseTypeCodeIDToken      = "code id_token"
 	ResponseTypeTokenIDToken     = "token id_token"
 	ResponseTypeCodeTokenIDToken = "code token id_token"
 )
-
-// IsSupportedResponseTypes check response type
-func IsSupportedResponseTypes(types []ResponseType, ty ResponseType) bool {
-	for _, v := range types {
-		if v == ty {
-			return true
-		}
-	}
-	return false
-}
 
 // CodeChallengeMethod proof key for code exchange method
 type CodeChallengeMethod string

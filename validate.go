@@ -127,7 +127,7 @@ func ValidateURIList(baseURIList, redirectURI, separator string) (realRedirectUR
 }
 
 // ValidateScopes validates the scopes & remove invalid scope
-func ValidateScopes(cli protocol.Client, scopes []string) ([]string, bool) {
+func ValidateScopes(cli protocol.Client, scopes []string, defaultScopes []string) ([]string, bool) {
 	openIDScope := false
 	for i := len(scopes) - 1; i >= 0; i-- {
 		scope := scopes[i]
@@ -135,15 +135,16 @@ func ValidateScopes(cli protocol.Client, scopes []string) ([]string, bool) {
 			openIDScope = true
 			continue
 		}
-		if !(scope == protocol.ScopeProfile ||
-			scope == protocol.ScopeEmail ||
-			scope == protocol.ScopeAddress ||
-			scope == protocol.ScopePhone ||
+		if !(scope == protocol.ScopeProfile || scope == protocol.ScopeEmail ||
+			scope == protocol.ScopeAddress || scope == protocol.ScopePhone ||
 			scope == protocol.ScopeOfflineAccess) &&
 			!cli.IsScopeAllowed(scope) { // ignore unknown scope
 			scopes[i] = scopes[len(scopes)-1]
 			scopes = scopes[:len(scopes)-1]
 		}
+	}
+	if len(scopes) == 0 {
+		scopes = defaultScopes
 	}
 	return scopes, openIDScope
 }
@@ -167,14 +168,14 @@ type ResponseTypeOK struct {
 }
 
 // ValidateResponseType validates the response type
-func ValidateResponseType(cli protocol.Client, typ string) (ResponseTypeOK, error) {
+func ValidateResponseType(cli protocol.Client, typ protocol.ResponseType) (ResponseTypeOK, error) {
 	ret := ResponseTypeOK{}
 	if typ == "" {
 		return ret, protocol.ErrInvalidRequest.Desc("The response type is missing in your request. ")
 	}
 	types := cli.ResponseTypes()
 
-	reqTypes := strings.Fields(typ)
+	reqTypes := strings.Fields(string(typ))
 	for _, t := range reqTypes {
 		if !containsResponseType(types, t) {
 			return ret, protocol.ErrInvalidRequest.Desc("The requested response type is missing in the client configuration.")
@@ -188,6 +189,8 @@ func ValidateResponseType(cli protocol.Client, typ string) (ResponseTypeOK, erro
 			ret.ResponseTypeIDToken = true
 		case protocol.ResponseTypeNone:
 			ret.ResponseTypeNone = true
+		case protocol.ResponseTypeDevice:
+			ret.ResponseTypeDevice = true
 		}
 	}
 	return ret, nil
