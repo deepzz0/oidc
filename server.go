@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/deepzz0/oidc/protocol"
@@ -359,6 +360,11 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 			resp.SetErrorURI(protocol.ErrAccessDenied.Wrap(err), "", "")
 			return
 		}
+		k := reflect.TypeOf(ui).Kind()
+		if k != reflect.Map && k != reflect.Struct {
+			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
+			return
+		}
 	}
 	ret := &protocol.AccessData{
 		AccessRequest: req,
@@ -452,7 +458,7 @@ func (s *Server) FinishUserInfoRequest(resp *protocol.Response, r *http.Request,
 	m, ok := req.AccessData.UserData.(map[string]interface{})
 	if ok {
 		resp.Output = m
-	} else {
+	} else { // must be struct
 		resp.Output = structs.Map(req.AccessData.UserData)
 	}
 }
