@@ -95,7 +95,7 @@ type AccessRequest struct {
 type AccessData struct {
 	*AccessRequest
 
-	UserData  interface{}       `json:"user_data"`
+	UserData  jwt.Claims        `json:"user_data"`
 	CreatedAt time.Time         `json:"created_at"`
 	Scope     SpaceDelimitedArr `json:"scope"`
 

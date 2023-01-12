@@ -63,7 +63,7 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 	req.ExpiresIn = exps.AccessTokenExpiration
 	req.TokenType = string(s.options.TokenType)
 	switch s.options.TokenType {
-	case "JWT":
+	case TokenTypeJWT:
 		claims := jwt.RegisteredClaims{
 			// A usual scenario is to set the expiration time relative to the current time
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(exps.AccessTokenExpiration) *
@@ -73,26 +73,13 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 			Issuer:    s.options.Issuer,
 			Subject:   req.UserID,
 			ID:        tokenID,
-			Audience:  []string{req.Client.ClientID()},
+			Audience:  jwt.ClaimStrings{req.Client.ClientID()},
 		}
-		var (
-			signMethod jwt.SigningMethod
-			key        interface{}
-		)
-		switch req.Client.JSONWebTokenSignAlg() {
-		case "HS256":
-			signMethod = jwt.SigningMethodHS256
-			key = []byte(req.Client.ClientSecret())
-		case "RS256":
-			signMethod = jwt.SigningMethodRS256
-			key, _ = req.Client.PrivateKey()
-		}
-		jwtToken := jwt.NewWithClaims(signMethod, claims)
-		token, err = jwtToken.SignedString(key)
+		token, err = signPayload(req.Client, claims)
 		if err != nil {
 			return
 		}
-	case "Bearer":
+	case TokenTypeBearer:
 		var cipher []byte
 		key := make([]byte, 16)
 		copy(key, defaultAESKey)

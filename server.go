@@ -2,23 +2,16 @@
 package oidc
 
 import (
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rsa"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
 	"strings"
 
 	"github.com/deepzz0/oidc/protocol"
+	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/fatih/structs"
 	"github.com/gorilla/schema"
-	"gopkg.in/square/go-jose.v2"
 )
 
 // Server OAuth2/OIDC
@@ -240,18 +233,13 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 		case protocol.ResponseTypeIDToken:
 			resp.SetResponseMode(protocol.ResponseModeFragment)
 
-			key, err := req.Client.PrivateKey()
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
-				return
-			}
 			userData, err := s.options.Storage.UserDataScopes(req.UserID, req.Scope)
 			if err != nil {
 				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
 				return
 			}
 			// user data must be id_token data
-			idToken, err := signPayload(key, userData)
+			idToken, err := signPayload(req.Client, userData)
 			if err != nil {
 				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
 				return
@@ -347,7 +335,7 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 // FinishTokenRequest token request finish
 func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, req *protocol.AccessRequest) {
 	var (
-		ui  interface{}
+		ui  jwt.Claims
 		err error
 	)
 	if req.GrantType != protocol.GrantTypeClientCredentials {
@@ -402,15 +390,10 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 	}
 	for _, s := range ret.Scope {
 		if s == protocol.ScopeOpenID {
-			key, err := req.Client.PrivateKey()
+			// UserData must be id_token data
+			idToken, err := signPayload(req.Client, ret.UserData)
 			if err != nil {
 				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
-				return
-			}
-			// UserData must be id_token data
-			idToken, err := signPayload(key, ret.UserData)
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError, "", "")
 				return
 			}
 			resp.Output["id_token"] = idToken
@@ -455,7 +438,7 @@ func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request)
 
 // FinishUserInfoRequest userinfo request finish
 func (s *Server) FinishUserInfoRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
-	m, ok := req.AccessData.UserData.(map[string]interface{})
+	m, ok := req.AccessData.UserData.(jwt.MapClaims)
 	if ok {
 		resp.Output = m
 	} else { // must be struct
@@ -525,57 +508,22 @@ func (s *Server) getBearerAuth(r *http.Request) string {
 	return token
 }
 
-func signPayload(key crypto.Signer, idToken interface{}) (string, error) {
-	algo, err := signatureAlgorithm(key)
-	if err != nil {
-		return "", err
-	}
+func signPayload(cli protocol.Client, claims jwt.Claims) (string, error) {
+	var key interface{}
 
-	// jwt signer
-	sk := jose.SigningKey{Algorithm: algo, Key: key}
-	signer, err := jose.NewSigner(sk, &jose.SignerOptions{})
-	if err != nil {
-		panic(err)
-	}
-	// payload
-	payload, err := json.Marshal(idToken)
-	if err != nil {
-		return "", err
-	}
-	// sign
-	jws, err := signer.Sign(payload)
-	if err != nil {
-		return "", err
-	}
-	return jws.CompactSerialize()
-}
-
-// Determine the signature algorithm for a JWT.
-func signatureAlgorithm(signer crypto.Signer) (jose.SignatureAlgorithm, error) {
-	if signer == nil {
-		return "", errors.New("no signing key")
-	}
-	switch key := signer.(type) {
-	case *rsa.PrivateKey:
-		// Because OIDC mandates that we support RS256, we always return that
-		// value. In the future, we might want to make this configurable on a
-		// per client basis. For example allowing PS256 or ECDSA variants.
-		return jose.RS256, nil
-	case *ecdsa.PrivateKey:
-		// We don't actually support ECDSA keys yet, but they're tested for
-		// in case we want to in the future.
-		//
-		// These values are prescribed depending on the ECDSA key type. We
-		// can't return different values.
-		switch key.Params() {
-		case elliptic.P256().Params():
-			return jose.ES256, nil
-		case elliptic.P384().Params():
-			return jose.ES384, nil
-		default:
-			return "", errors.New("unsupported ecdsa curve")
+	alg := cli.JWTSigningMethod()
+	switch alg {
+	case jwt.SigningMethodHS256:
+		key = []byte(cli.ClientSecret())
+	case jwt.SigningMethodRS256,
+		jwt.SigningMethodES256,
+		jwt.SigningMethodEdDSA:
+		var err error
+		key, err = cli.PrivateKey()
+		if err != nil {
+			return "", err
 		}
-	default:
-		return "", fmt.Errorf("unsupported signing key type %T", key)
 	}
+	jwtToken := jwt.NewWithClaims(alg, claims)
+	return jwtToken.SignedString(key)
 }

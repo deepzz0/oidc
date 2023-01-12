@@ -1,7 +1,11 @@
 // Package protocol provides ...
 package protocol
 
-import "crypto"
+import (
+	"crypto"
+
+	"github.com/golang-jwt/jwt/v4"
+)
 
 // ClientAuthMethod This section defines a set of Client Authentication methods that are used by Clients to
 // authenticate to the Authorization Server when using the Token Endpoint. During Client Registration, the RP
@@ -111,8 +115,8 @@ type Client interface {
 
 	// PrivateKey loads the client private key
 	PrivateKey() (crypto.Signer, error)
-	// JSONWebTokenSignAlg sign with idtoken
-	JSONWebTokenSignAlg() string // HS256 | RS256
+	// JWTSigningMethod sign with idtoken
+	JWTSigningMethod() jwt.SigningMethod
 	// DeviceAuthPath device authorize path
 	DeviceAuthPath() string
 	// ExpirationOptions client expirations, seconds

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/deepzz0/oidc/protocol"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 // TestStorage storage
@@ -42,11 +43,11 @@ func (s *TestStorage) Client(clientID string) (protocol.Client, error) {
 }
 
 // UserDataScopes get user info from scopes
-func (s *TestStorage) UserDataScopes(uid string, scopes []protocol.Scope) (interface{}, error) {
+func (s *TestStorage) UserDataScopes(uid string, scopes []protocol.Scope) (jwt.Claims, error) {
 	if uid != "1234" {
 		return nil, protocol.ErrNotFoundEntity
 	}
-	info := map[string]interface{}{}
+	info := jwt.MapClaims{}
 	for _, v := range scopes {
 		switch v {
 		case protocol.ScopeEmail:

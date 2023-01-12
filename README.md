@@ -11,20 +11,25 @@ Golang OAuth2/OIDC Server Library.
 
 ### Features
 
-- [x] Authorization Code
+- [ ] Grant Types Support:
+  - [x] Authorization Code
+  - [x] Refresh Token
+  - [x] Client Credentials
+  - [x] Password `Legacy`
+  - [x] Implicit Flow `Legacy`
+  - [ ] JWT Bearer
+  - [ ] Token Exchange
+  - [ ] SAML2 Bearer
+  - [ ] Device Code
+  - [ ] JWT Access Token
 - [ ] PKCE
-- [x] Client Credentials
-- [ ] Device Code
-- [x] Refresh Token
-- [x] Implicit Flow `Legacy`
-- [x] Password Grant `Legacy`
 - [ ] Session Management
-- [ ] Revocation
+- [ ] Token Revocation
 - [ ] Request Object
-- [ ] JWT Profile
-- [ ] Token Exchange
-- [ ] SAML2 Bearer
-- [x] Hybrid Response Type
+- [ ] Dynamic Client Registration
+- [x] ID Token Signing Algo: `HS256`, `RS256`, `ES256`, `ECDSA`, `Ed25519` and more
+- [x] Client Auth Method:  `client_secret_basic`, `client_secret_post`
+- [x] Hybrid Response Type: `code`, `token`, `id_token`
 - [x] Response Mode Support: `query`, `fragment`,`form_post`
 
 Have fun!

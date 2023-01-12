@@ -127,6 +127,12 @@ type IDToken struct {
 	SubJWK jose.JSONWebKey `json:"sub_jwk"`
 }
 
+// Valid implements jwt.Claims
+func (id IDToken) Valid() error {
+	// TODO
+	return nil
+}
+
 // UserInfo This specification defines a set of standard Claims. They can be requested to be returned either in the UserInfo
 // Response, per Section 5.3.2, or in the ID Token, per Section 2.
 type UserInfo struct {

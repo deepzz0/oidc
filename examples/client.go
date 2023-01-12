@@ -111,19 +111,19 @@ func (c *TestClient) PrivateKey() (crypto.Signer, error) {
 	return Signer, nil
 }
 
-// JSONWebTokenSignAlg sign with idtoken
-func (c *TestClient) JSONWebTokenSignAlg() string { // HS256 | RS256 | ES256
+// JWTSigningMethod sign with idtoken
+func (c *TestClient) JWTSigningMethod() jwt.SigningMethod { // HS256 | RS256 | ES256
 	signer, err := c.PrivateKey()
 	if err != nil {
-		return jwt.SigningMethodHS256.Name
+		return jwt.SigningMethodHS256
 	}
 	switch signer.Public().(type) {
 	case *rsa.PublicKey:
-		return jwt.SigningMethodRS256.Name
+		return jwt.SigningMethodRS256
 	case *ecdsa.PublicKey:
-		return jwt.SigningMethodES256.Name
+		return jwt.SigningMethodES256
 	}
-	return jwt.SigningMethodHS256.Name
+	return jwt.SigningMethodHS256
 }
 
 // DeviceAuthPath device authorize path
