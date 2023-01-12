@@ -202,6 +202,13 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 		}
 		return false
 	}
+	// none in response type
+	if isContains(req.ResponseType, protocol.ResponseTypeNone) {
+		if req.State != "" {
+			resp.Output["state"] = req.State
+		}
+		return
+	}
 	// code in response_type
 	if isContains(req.ResponseType, protocol.ResponseTypeCode) {
 		// AuthorizeData
@@ -457,15 +464,73 @@ func (s *Server) FinishUserInfoRequest(resp *protocol.Response, r *http.Request,
 	resp.Output = structs.Map(req.AccessData.UserData)
 }
 
-// HandleRevocationRequest revocation endpoint
-func (s *Server) HandleRevocationRequest(resp *protocol.Response, r *http.Request) *protocol.UserInfoRequest {
+// HandleRevocationRequest revocation endpoint, Implementations MUST support the revocation of refresh tokens and
+// SHOULD support the revocation of access tokens (see Implementation Note).
+func (s *Server) HandleRevocationRequest(resp *protocol.Response, r *http.Request) *protocol.RevocationRequest {
+	// The client requests the revocation of a particular token by making an HTTP POST request to the token
+	// revocation endpoint URL.
+	// https://www.rfc-editor.org/rfc/rfc7009
+	if r.Method != http.MethodPost {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Unsupported HTTP Method, should be POST"), "", "")
+		return nil
+	}
+	err := r.ParseForm() // parse form
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
+		return nil
+	}
 
-	return nil
+	req := &protocol.RevocationRequest{}
+	err = s.decoder.Decode(req, r.Form)
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
+		return nil
+	}
+	if req.Token == "" {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("token is required"), "", "")
+		return nil
+	}
+	if !ValidateTokenHint(req.TokenTypeHint) {
+		resp.SetErrorURI(protocol.ErrUnsupportedTokenType.Wrap(err), "", "")
+		return nil
+	}
+	// client authentication
+	auth := s.getClientAuth(r, s.options.AllowClientSecretInParams)
+	if auth == nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("check auth error"), "", "")
+		return nil
+	}
+	// must have a valid client
+	cli, err := s.getClient(auth, resp)
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrUnauthorizedClient.Wrap(err), "", "")
+		return nil
+	}
+	req.Client = cli
+
+	return req
 }
 
 // FinishRevocationRequest revocation request finish
-func (s *Server) FinishRevocationRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
-
+func (s *Server) FinishRevocationRequest(resp *protocol.Response, r *http.Request, req *protocol.RevocationRequest) {
+	// The authorization server responds with HTTP status code 200 if the token has been revoked successfully
+	// or if the client submitted an invalid token.
+	switch req.TokenTypeHint {
+	case protocol.TokenTypeHintAccessToken: // and revoke refresh_token
+		ad, _ := s.options.Storage.LoadAccess(req.Token)
+		if ad != nil {
+			_ = s.options.Storage.RemoveAccess(req.Token)
+			_ = s.options.Storage.RemoveRefresh(ad.RefreshToken)
+		}
+	case protocol.TokenTypeHintRefreshToken: // and revoke access_token
+		ad, _ := s.options.Storage.LoadRefresh(req.Token)
+		if ad != nil {
+			_ = s.options.Storage.RemoveAccess(req.Token)
+			_ = s.options.Storage.RemoveRefresh(ad.RefreshToken)
+		}
+	}
+	// An invalid token type hint value is ignored by the authorization server and does not influence the
+	// revocation response.
 }
 
 // HandleEndSessionEndpoint end_session endpoint
@@ -478,6 +543,9 @@ func (s *Server) HandleEndSessionEndpoint(resp *protocol.Response, r *http.Reque
 func (s *Server) FinishEndSessionRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
 
 }
+
+// HandleIntrospectionEndpoint https://www.rfc-editor.org/rfc/rfc7662
+// FinishIntrospectionRequest
 
 func (s *Server) getClient(auth *BasicAuth, resp *protocol.Response) (protocol.Client, error) {
 	cli, err := s.options.Storage.Client(auth.Username)

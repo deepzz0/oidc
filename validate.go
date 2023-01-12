@@ -269,3 +269,9 @@ func ValidatePrompt(prompts []string, maxAge int) (int, error) {
 	}
 	return maxAge, nil
 }
+
+// ValidateTokenHint only support access_token & refresh_token
+func ValidateTokenHint(hint protocol.TokenTypeHint) bool {
+	return hint == protocol.TokenTypeHintAccessToken ||
+		hint == protocol.TokenTypeHintRefreshToken
+}

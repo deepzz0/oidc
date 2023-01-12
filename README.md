@@ -24,7 +24,7 @@ Golang OAuth2/OIDC Server Library.
   - [ ] JWT Access Token
 - [x] PKCE For Public Cilents
 - [ ] Session Management
-- [ ] Token Revocation
+- [x] Token Revocation
 - [ ] Request Object
 - [ ] Dynamic Client Registration
 - [x] ID Token Signing Algo: `HS256`, `RS256`, `ES256`

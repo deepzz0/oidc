@@ -114,3 +114,11 @@ type UserInfoRequest struct {
 
 	AccessData *AccessData
 }
+
+// RevocationRequest revocation endpoint
+type RevocationRequest struct {
+	Token         string        `schema:"token"` // access_token or refresh_token
+	TokenTypeHint TokenTypeHint `schema:"token_type_hint"`
+
+	Client Client `json:"-" schema:"-"`
+}
