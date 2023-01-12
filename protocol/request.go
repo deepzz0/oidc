@@ -12,7 +12,7 @@ import (
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 type AuthorizeRequest struct {
 	// required & recommended
-	ResponseType ResponseType      `json:"response_type" schema:"response_type"`
+	ResponseType SpaceDelimitedArr `json:"response_type" schema:"response_type"`
 	ClientID     string            `json:"client_id" schema:"client_id"`
 	RedirectURI  string            `json:"redirect_uri" schema:"redirect_uri"`
 	State        string            `json:"state" schema:"state"`
@@ -85,17 +85,18 @@ type AccessRequest struct {
 	ClientAssertion     string `json:"client_assertion,omitempty" schema:"client_assertion"`
 	ClientAssertionType string `json:"client_assertion_type,omitempty" schema:"client_assertion_type"`
 
-	AccessData      *AccessData `json:"-" schema:"-"` // previous access data
-	UserID          string      `json:"user_id" schema:"-"`
-	Client          Client      `json:"-" schema:"-"`
-	GenerateRefresh bool        `json:"-" schema:"-"`
+	AuthorizeData   *AuthorizeData `json:"authorize_data" schema:"-"`
+	UserID          string         `json:"user_id" schema:"-"`
+	AccessData      *AccessData    `json:"-" schema:"-"` // previous access data
+	Client          Client         `json:"-" schema:"-"`
+	GenerateRefresh bool           `json:"-" schema:"-"`
 }
 
 // AccessData access data
 type AccessData struct {
 	*AccessRequest
 
-	UserData  jwt.Claims        `json:"user_data"`
+	UserData  *UserInfo         `json:"user_data"`
 	CreatedAt time.Time         `json:"created_at"`
 	Scope     SpaceDelimitedArr `json:"scope"`
 
@@ -113,6 +114,3 @@ type UserInfoRequest struct {
 
 	AccessData *AccessData
 }
-
-// UserInfoData userinfo data
-type UserInfoData = UserInfo

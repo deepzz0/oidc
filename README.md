@@ -22,12 +22,12 @@ Golang OAuth2/OIDC Server Library.
   - [ ] SAML2 Bearer
   - [ ] Device Code
   - [ ] JWT Access Token
-- [x] PKCE
+- [x] PKCE For Public Cilents
 - [ ] Session Management
 - [ ] Token Revocation
 - [ ] Request Object
 - [ ] Dynamic Client Registration
-- [x] ID Token Signing Algo: `HS256`, `RS256`, `ES256`, `ECDSA`, `Ed25519` and more
+- [x] ID Token Signing Algo: `HS256`, `RS256`, `ES256`
 - [x] Client Auth Method:  `client_secret_basic`, `client_secret_post`
 - [x] Hybrid Response Type: `code`, `token`, `id_token`
 - [x] Response Mode Support: `query`, `fragment`,`form_post`

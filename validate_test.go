@@ -2,6 +2,7 @@
 package oidc
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/deepzz0/oidc/examples"
@@ -59,7 +60,8 @@ func TestValidateResponseType(t *testing.T) {
 		"token code",
 	}
 	for _, v := range testcases {
-		typeOK, err := ValidateResponseType(cli, v)
+		types := strings.Fields(string(v))
+		typeOK, err := ValidateResponseType(cli, types)
 		if err != nil {
 			t.Fatal(err)
 		}

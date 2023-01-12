@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/deepzz0/oidc/examples"
 	"github.com/deepzz0/oidc/protocol"
@@ -21,12 +22,16 @@ var (
 func init() {
 	server = NewServer(
 		WithIssuer(issuer),
+		WithForcePKCEForPublicClients(false),
 		WithStorage(examples.NewTestStorage()),
 		WithDefaultScopes([]string{protocol.ScopeEmail}),
 	)
 	// inject code & token generate
-	testHookGenerateCode = func() string {
-		return "test_hook_code"
+	testHookGenerateCode = func() (string, error) {
+		return "test_hook_code", nil
+	}
+	testHookTimeNow = func() time.Time {
+		return time.Time{}
 	}
 }
 
@@ -234,29 +239,29 @@ func TestAuthorizationEndpoint(t *testing.T) {
 					assert.Equal(t, "http://localhost:9000/oidc/callback?code=test_hook_code&state=test_state", location)
 				}
 			case "token":
-				assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"], resp.Output)
+				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
 				assert.EqualValues(t, "Bearer", resp.Output["token_type"], resp.Output)
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=3D3etRBHQjqKEhfh3_kr6Q&expires_in=3600&scope=email&state=test_state&token_type=Bearer", location)
+				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=WHwAII5NYaTQda7SdGw0Pg&expires_in=3600&scope=email&state=test_state&token_type=Bearer", location)
 			case "id_token":
-				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhlbGxvQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.oH-7rQKjg3Vaw-J6a5HBGUJ5WcNlds6kZQRoewdztQZFNbXXJzPK90jwEPHdS5JDmwn8zLSvL39057zZP0_D8mPBnq0l44inXI40Mfuyo-xBZGs5JWXruL69KCsLrtcvQsKae-yO9SF33P0VSOltreJ0p7c2idHBKkyCAvY8qEYRRsGIx1cNfSyI-wNHhF1cEMOyjy1pDfHexMGUKQJxmtUJC3x_SYTmSM7-7I3y1Kju26lgl8gQjGbyKTFOH19v8uxQAVkpOVX7ZHpkbXu5bYJ0L-8E1aHV7pkyCuMNcWdBnKSdZiIyN8V_uXlnDzu5b9l45LJX5AE8YJwE6Pcgug", resp.Output["id_token"], resp.Output)
+				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OX0.vPjyHpHFF0AcJqc-RO2XPfOr5u5Fo2nW7f-rvl6cUiqd0jKKPAeAUohiGUhU4PHtScPd2A-YLJOImywmxuSRP9AKzd96u2leeG-e7ZIGINcVXFy8n6xr9AUKSoaeHnMNd4QALolQ9WhNvAeUkLX9z-EgEd4RarrevrOyGI8bm1h9nJu2lrGweYSlry3lfh02ayrCYYsucZOaY7su3nxoVbkr6lrxiud3h1HqpOFXyCTmX51YLy159RcLLjs3cIHGMzDUVZmb0_M6oKM9YHjtaGXr4zt8JHFdiqmDsUinRVbLr3udyRiqd_LxpAgQtJzEqi6CfpF-8Rp1WzTx9KhVzw", resp.Output["id_token"], resp.Output)
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback#id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhlbGxvQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.oH-7rQKjg3Vaw-J6a5HBGUJ5WcNlds6kZQRoewdztQZFNbXXJzPK90jwEPHdS5JDmwn8zLSvL39057zZP0_D8mPBnq0l44inXI40Mfuyo-xBZGs5JWXruL69KCsLrtcvQsKae-yO9SF33P0VSOltreJ0p7c2idHBKkyCAvY8qEYRRsGIx1cNfSyI-wNHhF1cEMOyjy1pDfHexMGUKQJxmtUJC3x_SYTmSM7-7I3y1Kju26lgl8gQjGbyKTFOH19v8uxQAVkpOVX7ZHpkbXu5bYJ0L-8E1aHV7pkyCuMNcWdBnKSdZiIyN8V_uXlnDzu5b9l45LJX5AE8YJwE6Pcgug&state=test_state", location)
+				assert.Equal(t, "http://localhost:9000/oidc/callback#id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OX0.vPjyHpHFF0AcJqc-RO2XPfOr5u5Fo2nW7f-rvl6cUiqd0jKKPAeAUohiGUhU4PHtScPd2A-YLJOImywmxuSRP9AKzd96u2leeG-e7ZIGINcVXFy8n6xr9AUKSoaeHnMNd4QALolQ9WhNvAeUkLX9z-EgEd4RarrevrOyGI8bm1h9nJu2lrGweYSlry3lfh02ayrCYYsucZOaY7su3nxoVbkr6lrxiud3h1HqpOFXyCTmX51YLy159RcLLjs3cIHGMzDUVZmb0_M6oKM9YHjtaGXr4zt8JHFdiqmDsUinRVbLr3udyRiqd_LxpAgQtJzEqi6CfpF-8Rp1WzTx9KhVzw&state=test_state", location)
 			case "code token":
-				assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"], resp.Output)
+				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
 				assert.Equal(t, "test_hook_code", resp.Output["code"])
 			case "code id_token":
 				assert.Equal(t, "test_hook_code", resp.Output["code"])
-				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhlbGxvQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.oH-7rQKjg3Vaw-J6a5HBGUJ5WcNlds6kZQRoewdztQZFNbXXJzPK90jwEPHdS5JDmwn8zLSvL39057zZP0_D8mPBnq0l44inXI40Mfuyo-xBZGs5JWXruL69KCsLrtcvQsKae-yO9SF33P0VSOltreJ0p7c2idHBKkyCAvY8qEYRRsGIx1cNfSyI-wNHhF1cEMOyjy1pDfHexMGUKQJxmtUJC3x_SYTmSM7-7I3y1Kju26lgl8gQjGbyKTFOH19v8uxQAVkpOVX7ZHpkbXu5bYJ0L-8E1aHV7pkyCuMNcWdBnKSdZiIyN8V_uXlnDzu5b9l45LJX5AE8YJwE6Pcgug", resp.Output["id_token"], resp.Output)
+				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OX0.vPjyHpHFF0AcJqc-RO2XPfOr5u5Fo2nW7f-rvl6cUiqd0jKKPAeAUohiGUhU4PHtScPd2A-YLJOImywmxuSRP9AKzd96u2leeG-e7ZIGINcVXFy8n6xr9AUKSoaeHnMNd4QALolQ9WhNvAeUkLX9z-EgEd4RarrevrOyGI8bm1h9nJu2lrGweYSlry3lfh02ayrCYYsucZOaY7su3nxoVbkr6lrxiud3h1HqpOFXyCTmX51YLy159RcLLjs3cIHGMzDUVZmb0_M6oKM9YHjtaGXr4zt8JHFdiqmDsUinRVbLr3udyRiqd_LxpAgQtJzEqi6CfpF-8Rp1WzTx9KhVzw", resp.Output["id_token"], resp.Output)
 			case "token id_token":
-				assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"], resp.Output)
-				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhlbGxvQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.oH-7rQKjg3Vaw-J6a5HBGUJ5WcNlds6kZQRoewdztQZFNbXXJzPK90jwEPHdS5JDmwn8zLSvL39057zZP0_D8mPBnq0l44inXI40Mfuyo-xBZGs5JWXruL69KCsLrtcvQsKae-yO9SF33P0VSOltreJ0p7c2idHBKkyCAvY8qEYRRsGIx1cNfSyI-wNHhF1cEMOyjy1pDfHexMGUKQJxmtUJC3x_SYTmSM7-7I3y1Kju26lgl8gQjGbyKTFOH19v8uxQAVkpOVX7ZHpkbXu5bYJ0L-8E1aHV7pkyCuMNcWdBnKSdZiIyN8V_uXlnDzu5b9l45LJX5AE8YJwE6Pcgug", resp.Output["id_token"], resp.Output)
+				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
+				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OSwiYXRfaGFzaCI6ImVrdXA5akxsdm5ReEtlWV9JRHBubGNwNVNqeGp4N01XZ0Mwcks0S0VkTzQ9In0.u9X6K0OZSbcgijpNBHvEh4D5DOkpQ4U3arzHrgcy-wdSptp0MAyRKinF5QJQ0UqOFZZO0eqFuM8-mdtAMZRDNCQuGxQ3pkLst2duNmFl3QskiolaOVWkLXl3G3BX7kO5oM897HCusK-AFT2oET_QQ5slQ75dsW4KRaqTfChxv7Rca0gEV6baonfCnbRbDGSk4MnVcxPq_WWhRStkIP8E59DqA0IGrORmA5AMYaXNm8RE00alGen9ml5q5wONZKLyWPBY96SJBCmborQNQj9VtfFIGhwQ5FSayYunbDDLbUNE6BlABzGTM-Y97jKn6TEYaEFS-CJOD0S5gcSXmonW6g", resp.Output["id_token"], resp.Output)
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=3D3etRBHQjqKEhfh3_kr6Q&expires_in=3600&id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhlbGxvQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.oH-7rQKjg3Vaw-J6a5HBGUJ5WcNlds6kZQRoewdztQZFNbXXJzPK90jwEPHdS5JDmwn8zLSvL39057zZP0_D8mPBnq0l44inXI40Mfuyo-xBZGs5JWXruL69KCsLrtcvQsKae-yO9SF33P0VSOltreJ0p7c2idHBKkyCAvY8qEYRRsGIx1cNfSyI-wNHhF1cEMOyjy1pDfHexMGUKQJxmtUJC3x_SYTmSM7-7I3y1Kju26lgl8gQjGbyKTFOH19v8uxQAVkpOVX7ZHpkbXu5bYJ0L-8E1aHV7pkyCuMNcWdBnKSdZiIyN8V_uXlnDzu5b9l45LJX5AE8YJwE6Pcgug&scope=email&state=test_state&token_type=Bearer", location, resp.Output)
+				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=WHwAII5NYaTQda7SdGw0Pg&expires_in=3600&id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OSwiYXRfaGFzaCI6ImVrdXA5akxsdm5ReEtlWV9JRHBubGNwNVNqeGp4N01XZ0Mwcks0S0VkTzQ9In0.u9X6K0OZSbcgijpNBHvEh4D5DOkpQ4U3arzHrgcy-wdSptp0MAyRKinF5QJQ0UqOFZZO0eqFuM8-mdtAMZRDNCQuGxQ3pkLst2duNmFl3QskiolaOVWkLXl3G3BX7kO5oM897HCusK-AFT2oET_QQ5slQ75dsW4KRaqTfChxv7Rca0gEV6baonfCnbRbDGSk4MnVcxPq_WWhRStkIP8E59DqA0IGrORmA5AMYaXNm8RE00alGen9ml5q5wONZKLyWPBY96SJBCmborQNQj9VtfFIGhwQ5FSayYunbDDLbUNE6BlABzGTM-Y97jKn6TEYaEFS-CJOD0S5gcSXmonW6g&scope=email&state=test_state&token_type=Bearer", location, resp.Output)
 			case "code token id_token":
 				assert.Equal(t, "test_hook_code", resp.Output["code"])
-				assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"], resp.Output)
-				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhlbGxvQGV4YW1wbGUuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWV9.oH-7rQKjg3Vaw-J6a5HBGUJ5WcNlds6kZQRoewdztQZFNbXXJzPK90jwEPHdS5JDmwn8zLSvL39057zZP0_D8mPBnq0l44inXI40Mfuyo-xBZGs5JWXruL69KCsLrtcvQsKae-yO9SF33P0VSOltreJ0p7c2idHBKkyCAvY8qEYRRsGIx1cNfSyI-wNHhF1cEMOyjy1pDfHexMGUKQJxmtUJC3x_SYTmSM7-7I3y1Kju26lgl8gQjGbyKTFOH19v8uxQAVkpOVX7ZHpkbXu5bYJ0L-8E1aHV7pkyCuMNcWdBnKSdZiIyN8V_uXlnDzu5b9l45LJX5AE8YJwE6Pcgug", resp.Output["id_token"], resp.Output)
+				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
+				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OSwiYXRfaGFzaCI6ImVrdXA5akxsdm5ReEtlWV9JRHBubGNwNVNqeGp4N01XZ0Mwcks0S0VkTzQ9In0.u9X6K0OZSbcgijpNBHvEh4D5DOkpQ4U3arzHrgcy-wdSptp0MAyRKinF5QJQ0UqOFZZO0eqFuM8-mdtAMZRDNCQuGxQ3pkLst2duNmFl3QskiolaOVWkLXl3G3BX7kO5oM897HCusK-AFT2oET_QQ5slQ75dsW4KRaqTfChxv7Rca0gEV6baonfCnbRbDGSk4MnVcxPq_WWhRStkIP8E59DqA0IGrORmA5AMYaXNm8RE00alGen9ml5q5wONZKLyWPBY96SJBCmborQNQj9VtfFIGhwQ5FSayYunbDDLbUNE6BlABzGTM-Y97jKn6TEYaEFS-CJOD0S5gcSXmonW6g", resp.Output["id_token"], resp.Output)
 			}
 		}
 	}
@@ -374,7 +379,7 @@ func TestTokenAuthorizationCode(t *testing.T) {
 			}
 			assert.Equal(t, 200, w.Code)
 
-			assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"])
+			assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"])
 			assert.Equal(t, "test_hook_code", resp.Output["refresh_token"])
 			assert.EqualValues(t, "Bearer", resp.Output["token_type"])
 		}
@@ -471,7 +476,7 @@ func TestTokenRefreshToken(t *testing.T) {
 			}
 			assert.Equal(t, 200, w.Code)
 
-			assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"])
+			assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"])
 			assert.Equal(t, "test_hook_code", resp.Output["refresh_token"])
 			assert.EqualValues(t, "Bearer", resp.Output["token_type"])
 		}
@@ -538,7 +543,7 @@ func TestTokenPassword(t *testing.T) {
 				t.Fatal(err)
 			}
 			assert.Equal(t, 200, w.Code)
-			assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"])
+			assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"])
 			assert.Equal(t, "test_hook_code", resp.Output["refresh_token"])
 			assert.EqualValues(t, "Bearer", resp.Output["token_type"])
 		}
@@ -577,7 +582,7 @@ func TestTokenCredentials(t *testing.T) {
 			}
 			assert.Equal(t, 200, w.Code)
 
-			assert.Equal(t, "3D3etRBHQjqKEhfh3_kr6Q", resp.Output["access_token"])
+			assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"])
 			assert.EqualValues(t, "Bearer", resp.Output["token_type"])
 		}
 	}
@@ -597,14 +602,14 @@ var userinfoCases = []testcase{
 	// ok: token in query
 	{
 		vals: url.Values{
-			"access_token": {"3D3etRBHQjqKEhfh3_kr6Q"},
+			"access_token": {"WHwAII5NYaTQda7SdGw0Pg"},
 		},
 		expected: nil,
 	},
 	// ok: token in body
 	{
 		vals: url.Values{
-			"access_token": {"3D3etRBHQjqKEhfh3_kr6Q"},
+			"access_token": {"WHwAII5NYaTQda7SdGw0Pg"},
 		},
 		expected: nil,
 	},
@@ -624,7 +629,7 @@ func TestUserInfoEndpoint(t *testing.T) {
 		case 1:
 			url := issuer + "/userinfo?" + v.vals.Encode()
 			r = httptest.NewRequest(http.MethodGet, url, nil)
-			r.Header.Set("Authorization", string(server.options.TokenType)+" "+"3D3etRBHQjqKEhfh3_kr6Q")
+			r.Header.Set("Authorization", string(server.options.TokenType)+" "+"WHwAII5NYaTQda7SdGw0Pg")
 		case 2:
 			url := issuer + "/userinfo?" + v.vals.Encode()
 			r = httptest.NewRequest(http.MethodGet, url, nil)

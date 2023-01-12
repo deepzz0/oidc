@@ -3,8 +3,6 @@ package protocol
 
 import (
 	"errors"
-
-	"github.com/golang-jwt/jwt/v4"
 )
 
 // ErrNotFoundEntity not found object
@@ -15,7 +13,7 @@ type Storage interface {
 	// Client loads the client by id (client_id)
 	Client(clientID string) (Client, error)
 	// UserDataScopes get user info by scopes
-	UserDataScopes(uid string, scopes []Scope) (jwt.Claims, error)
+	UserDataScopes(uid string, scopes []Scope) (*UserInfo, error)
 
 	// SaveAuthorize saves authorize data.
 	SaveAuthorize(code string, data *AuthorizeData, exp int) error

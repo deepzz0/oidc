@@ -168,14 +168,13 @@ type ResponseTypeOK struct {
 }
 
 // ValidateResponseType validates the response type
-func ValidateResponseType(cli protocol.Client, typ protocol.ResponseType) (ResponseTypeOK, error) {
+func ValidateResponseType(cli protocol.Client, reqTypes []string) (ResponseTypeOK, error) {
 	ret := ResponseTypeOK{}
-	if typ == "" {
+	if len(reqTypes) == 0 {
 		return ret, protocol.ErrInvalidRequest.Desc("The response type is missing in your request. ")
 	}
 	types := cli.ResponseTypes()
 
-	reqTypes := strings.Fields(string(typ))
 	for _, t := range reqTypes {
 		if !containsResponseType(types, t) {
 			return ret, protocol.ErrInvalidRequest.Desc("The requested response type is missing in the client configuration.")
@@ -192,6 +191,11 @@ func ValidateResponseType(cli protocol.Client, typ protocol.ResponseType) (Respo
 		case protocol.ResponseTypeDevice:
 			ret.ResponseTypeDevice = true
 		}
+	}
+	// The Response Type none SHOULD NOT be combined with other Response Types.
+	// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#none
+	if ret.ResponseTypeNone && len(reqTypes) > 1 {
+		return ret, protocol.ErrInvalidRequest.Desc("Response Type none SHOULD NOT be combined with other Response Types")
 	}
 	return ret, nil
 }

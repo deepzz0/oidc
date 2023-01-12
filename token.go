@@ -15,21 +15,21 @@ import (
 
 var (
 	defaultAESKey        = []byte{89, 88, 86, 48, 97, 71, 57, 121, 97, 88, 112, 104, 100, 71, 108, 118}
-	testHookGenerateCode func() string
+	testHookGenerateCode = func() (string, error) {
+		id, err := uuid.NewRandom()
+		if err != nil {
+			return "", err
+		}
+		return base64.RawURLEncoding.EncodeToString(id[:]), nil
+	}
 )
 
 // GenerateAuthorizeCodeAndSave default authorize code generator
 func (s *Server) GenerateAuthorizeCodeAndSave(req *protocol.AuthorizeData) (code string, err error) {
 	// test hook
-	if testHookGenerateCode == nil {
-		var id uuid.UUID
-		id, err = uuid.NewRandom()
-		if err != nil {
-			return
-		}
-		code = base64.RawURLEncoding.EncodeToString(id[:])
-	} else {
-		code = testHookGenerateCode()
+	code, err = testHookGenerateCode()
+	if err != nil {
+		return
 	}
 
 	exps := req.Client.ExpirationOptions()
@@ -43,18 +43,9 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 	genRefresh bool) (token, refresh string, err error) {
 
 	// access token, test hook
-	var (
-		tokenID string
-		id      uuid.UUID
-	)
-	if testHookGenerateCode == nil {
-		id, err = uuid.NewRandom()
-		if err != nil {
-			return
-		}
-		tokenID = base64.RawURLEncoding.EncodeToString(id[:])
-	} else {
-		token = testHookGenerateCode()
+	tokenID, err := testHookGenerateCode()
+	if err != nil {
+		return
 	}
 	// bearer token
 	now := time.Now().UTC()
@@ -98,14 +89,9 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 	}
 	// refresh token
 	if genRefresh {
-		if testHookGenerateCode == nil {
-			id, err = uuid.NewRandom()
-			if err != nil {
-				return
-			}
-			refresh = base64.RawURLEncoding.EncodeToString(id[:])
-		} else {
-			refresh = testHookGenerateCode()
+		refresh, err = testHookGenerateCode()
+		if err != nil {
+			return
 		}
 		err = s.options.Storage.SaveRefresh(refresh, token, exps.RefreshTokenExpiration)
 	}

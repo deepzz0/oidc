@@ -13,24 +13,24 @@ import (
 
 // see https://www.rfc-editor.org/rfc/rfc6749#section-4.1
 func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http.Request,
-	req *protocol.AccessRequest) error {
+	req *protocol.AccessRequest) (err error) {
 
 	// code is required, must be a valid authorization code
 	if req.Code == "" {
 		return protocol.ErrInvalidGrant.Desc("code is required")
 	}
-	authData, err := s.options.Storage.LoadAuthorize(req.Code)
+	req.AuthorizeData, err = s.options.Storage.LoadAuthorize(req.Code)
 	if err != nil {
 		if err == protocol.ErrNotFoundEntity {
 			return protocol.ErrInvalidGrant.Desc("code is expired or invalid")
 		}
 		return protocol.ErrInvalidGrant.Wrap(err).Desc("error loading authorize data")
 	}
-	if authData.ClientID != req.ClientID {
+	if req.AuthorizeData.ClientID != req.ClientID {
 		return protocol.ErrInvalidGrant.Desc("client code does not match")
 	}
 	// check expires
-	if authData.CreatedAt.Add(time.Second * time.Duration(authData.ExpiresIn)).
+	if req.AuthorizeData.CreatedAt.Add(time.Second * time.Duration(req.AuthorizeData.ExpiresIn)).
 		Before(time.Now()) {
 		return protocol.ErrInvalidGrant.Desc("authorization data is expired")
 	}
@@ -43,11 +43,11 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 	if err != nil {
 		return protocol.ErrInvalidRequest.Desc("error validating client redirect uri")
 	}
-	if authData.RedirectURI != req.RedirectURI {
+	if req.AuthorizeData.RedirectURI != req.RedirectURI {
 		return protocol.ErrInvalidRequest.Desc("client redirect does not match authorization data")
 	}
 	// verify PKCE, if present in the authorization data
-	if authData.CodeChallenge != "" {
+	if req.AuthorizeData.CodeChallenge != "" {
 		// https://tools.ietf.org/html/rfc7636#section-4.1
 		if !pkceMatcher.MatchString(req.CodeVerifier) {
 			return protocol.ErrInvalidRequest.Desc("pkce code challenge verifier does not match")
@@ -55,7 +55,7 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 
 		// https: //tools.ietf.org/html/rfc7636#section-4.6
 		codeVerifier := ""
-		switch authData.CodeChallengeMethod {
+		switch req.AuthorizeData.CodeChallengeMethod {
 		case protocol.CodeChallengeMethodPlain:
 			codeVerifier = req.CodeVerifier
 		case protocol.CodeChallengeMethodS256:
@@ -64,13 +64,13 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 		default:
 			return protocol.ErrInvalidRequest.Desc("pkce transform algorithm not supported (rfc7636)")
 		}
-		if codeVerifier != authData.CodeChallenge {
+		if codeVerifier != req.AuthorizeData.CodeChallenge {
 			return protocol.ErrInvalidGrant.Wrap(errors.New("code_verifier failed comparison with code_challenge")).
 				Desc("pkce code verifier does not match challenge")
 
 		}
 	}
 	req.GenerateRefresh = true
-	req.UserID = authData.UserID
+	req.UserID = req.AuthorizeData.UserID
 	return nil
 }

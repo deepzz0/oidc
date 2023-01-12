@@ -2,10 +2,12 @@
 package oidc
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
+	"time"
 
 	"github.com/deepzz0/oidc/protocol"
 	"github.com/golang-jwt/jwt/v4"
@@ -192,61 +194,76 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 		resp.SetErrorURI(protocol.ErrLoginRequired, "", req.State)
 		return
 	}
-	// support hybrid
-	for _, v := range strings.Fields(string(req.ResponseType)) {
-		ty := protocol.ResponseType(v)
-		switch ty {
-		case protocol.ResponseTypeCode:
-			// AuthorizeData
-			ret := &protocol.AuthorizeData{AuthorizeRequest: req}
+	isContains := func(arr []string, rt protocol.ResponseType) bool {
+		for _, v := range arr {
+			if v == string(rt) {
+				return true
+			}
+		}
+		return false
+	}
+	// code in response_type
+	if isContains(req.ResponseType, protocol.ResponseTypeCode) {
+		// AuthorizeData
+		ret := &protocol.AuthorizeData{AuthorizeRequest: req}
 
-			// generate & save code
-			code, err := s.GenerateAuthorizeCodeAndSave(ret)
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", ret.State)
-				return
-			}
+		// generate & save code
+		code, err := s.GenerateAuthorizeCodeAndSave(ret)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", ret.State)
+			return
+		}
 
-			// redirect with code
-			resp.Output["code"] = code
-			resp.Output["state"] = req.State
-		case protocol.ResponseTypeToken:
-			// The implicit grant type does not include client authentication, and relies on the presence of the
-			// resource owner and the registration of the redirection URI.
-			// The redirection URI includes the access token in the URI fragment.
-			// see https://www.rfc-editor.org/rfc/rfc6749#section-4.2
-			resp.SetResponseMode(protocol.ResponseModeFragment)
-			// generate & save token
-			accessReq := &protocol.AccessRequest{
-				GrantType:   protocol.GrantTypeImplicit,
-				Scope:       req.Scope,
-				RedirectURI: req.RedirectURI,
+		// redirect with code
+		resp.Output["code"] = code
+		resp.Output["state"] = req.State
+	}
+	// token in response_type, should be front of id_token
+	if isContains(req.ResponseType, protocol.ResponseTypeToken) {
+		// The implicit grant type does not include client authentication, and relies on the presence of the
+		// resource owner and the registration of the redirection URI.
+		// The redirection URI includes the access token in the URI fragment.
+		// see https://www.rfc-editor.org/rfc/rfc6749#section-4.2
+		resp.SetResponseMode(protocol.ResponseModeFragment)
+		// generate & save token
+		accessReq := &protocol.AccessRequest{
+			GrantType:   protocol.GrantTypeImplicit,
+			Scope:       req.Scope,
+			RedirectURI: req.RedirectURI,
 
-				UserID:          req.UserID,
-				Client:          req.Client,
-				GenerateRefresh: false, // do not return refresh_token
-			}
-			s.FinishTokenRequest(resp, r, accessReq)
-			if req.State != "" && resp.ErrCode == nil {
-				resp.Output["state"] = req.State
-			}
-		case protocol.ResponseTypeIDToken:
-			resp.SetResponseMode(protocol.ResponseModeFragment)
-
-			userData, err := s.options.Storage.UserDataScopes(req.UserID, req.Scope)
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
-				return
-			}
-			// user data must be id_token data
-			idToken, err := signPayload(req.Client, userData)
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
-				return
-			}
-			resp.Output["id_token"] = idToken
+			UserID:          req.UserID,
+			Client:          req.Client,
+			GenerateRefresh: false, // do not return refresh_token
+		}
+		s.FinishTokenRequest(resp, r, accessReq)
+		if req.State != "" && resp.ErrCode == nil {
 			resp.Output["state"] = req.State
 		}
+	}
+	// id_token in response_type
+	if isContains(req.ResponseType, protocol.ResponseTypeIDToken) {
+		// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Combinations
+		resp.SetResponseMode(protocol.ResponseModeFragment)
+
+		userData, err := s.options.Storage.UserDataScopes(req.UserID, req.Scope)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
+			return
+		}
+		claims := s.rebuildIDToken(req.Client, req, userData)
+		// check at_hash, https://openid.net/specs/openid-connect-core-1_0.html#ImplicitIDToken
+		if at, ok := resp.Output["access_token"]; ok {
+			hash := sha256.Sum256([]byte(at.(string)))
+			claims.ATHash = base64.URLEncoding.EncodeToString(hash[:])
+		}
+		// user data must be id_token data
+		idToken, err := signPayload(req.Client, claims)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
+			return
+		}
+		resp.Output["id_token"] = idToken
+		resp.Output["state"] = req.State
 	}
 }
 
@@ -335,7 +352,7 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 // FinishTokenRequest token request finish
 func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, req *protocol.AccessRequest) {
 	var (
-		ui  jwt.Claims
+		ui  *protocol.UserInfo
 		err error
 	)
 	if req.GrantType != protocol.GrantTypeClientCredentials {
@@ -346,11 +363,6 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 		ui, err = s.options.Storage.UserDataScopes(req.UserID, req.Scope)
 		if err != nil {
 			resp.SetErrorURI(protocol.ErrAccessDenied.Wrap(err), "", "")
-			return
-		}
-		k := reflect.TypeOf(ui).Kind()
-		if k != reflect.Map && k != reflect.Struct {
-			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
 			return
 		}
 	}
@@ -388,10 +400,14 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 	if len(ret.Scope) > 0 {
 		resp.Output["scope"] = ret.Scope.Encode()
 	}
-	for _, s := range ret.Scope {
-		if s == protocol.ScopeOpenID {
+	for _, v := range ret.Scope {
+		// Verify that the Authorization Code used was issued in response to an OpenID Connect Authentication Request
+		// (so that an ID Token will be returned from the Token Endpoint). must be authorization_code
+		if ad := req.AuthorizeData; v == protocol.ScopeOpenID && ad != nil {
 			// UserData must be id_token data
-			idToken, err := signPayload(req.Client, ret.UserData)
+			claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData)
+
+			idToken, err := signPayload(req.Client, claims)
 			if err != nil {
 				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
 				return
@@ -438,12 +454,29 @@ func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request)
 
 // FinishUserInfoRequest userinfo request finish
 func (s *Server) FinishUserInfoRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
-	m, ok := req.AccessData.UserData.(jwt.MapClaims)
-	if ok {
-		resp.Output = m
-	} else { // must be struct
-		resp.Output = structs.Map(req.AccessData.UserData)
-	}
+	resp.Output = structs.Map(req.AccessData.UserData)
+}
+
+// HandleRevocationRequest revocation endpoint
+func (s *Server) HandleRevocationRequest(resp *protocol.Response, r *http.Request) *protocol.UserInfoRequest {
+
+	return nil
+}
+
+// FinishRevocationRequest revocation request finish
+func (s *Server) FinishRevocationRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
+
+}
+
+// HandleEndSessionEndpoint end_session endpoint
+func (s *Server) HandleEndSessionEndpoint(resp *protocol.Response, r *http.Request) *protocol.UserInfoRequest {
+
+	return nil
+}
+
+// FinishEndSessionRequest end_session request finish
+func (s *Server) FinishEndSessionRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
+
 }
 
 func (s *Server) getClient(auth *BasicAuth, resp *protocol.Response) (protocol.Client, error) {
@@ -508,6 +541,27 @@ func (s *Server) getBearerAuth(r *http.Request) string {
 	return token
 }
 
+var testHookTimeNow = func() time.Time { return time.Now() }
+
+func (s *Server) rebuildIDToken(cli protocol.Client, req *protocol.AuthorizeRequest,
+	ui *protocol.UserInfo) *protocol.IDToken {
+
+	now := testHookTimeNow()
+	exps := cli.ExpirationOptions()
+	idToken := &protocol.IDToken{
+		Issuer:     s.options.Issuer,
+		Subject:    ui.Subject,
+		Audience:   jwt.ClaimStrings{cli.ClientID()},
+		Expiration: jwt.NewNumericDate(now.Add(time.Second * time.Duration(exps.IDTokenExpiration))),
+		IssuedAt:   jwt.NewNumericDate(now),
+		Nonce:      req.Nonce,
+	}
+	if req.MaxAge > 0 {
+		idToken.AuthTime = jwt.NewNumericDate(now.Add(time.Second * time.Duration(req.MaxAge)))
+	}
+	return idToken
+}
+
 func signPayload(cli protocol.Client, claims jwt.Claims) (string, error) {
 	var key interface{}
 
@@ -516,8 +570,7 @@ func signPayload(cli protocol.Client, claims jwt.Claims) (string, error) {
 	case jwt.SigningMethodHS256:
 		key = []byte(cli.ClientSecret())
 	case jwt.SigningMethodRS256,
-		jwt.SigningMethodES256,
-		jwt.SigningMethodEdDSA:
+		jwt.SigningMethodES256:
 		var err error
 		key, err = cli.PrivateKey()
 		if err != nil {

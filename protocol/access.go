@@ -81,12 +81,12 @@ type IDToken struct {
 	Issuer     string           `json:"iss"`
 	Subject    string           `json:"sub"` // User identifier
 	Audience   jwt.ClaimStrings `json:"aud"` // Must contain oauth2 client_id
-	Expiration jwt.NumericDate  `json:"exp"` // Expiration time on or after which the ID Token MUST NOT be accepted for processing.
-	IssuedAt   jwt.NumericDate  `json:"iat"` // Time at which the JWT was issued
+	Expiration *jwt.NumericDate `json:"exp"` // Expiration time on or after which the ID Token MUST NOT be accepted for processing.
+	IssuedAt   *jwt.NumericDate `json:"iat"` // Time at which the JWT was issued
 
 	// When a max_age request is made or when auth_time is requested as an Essential Claim, then this Claim is REQUIRED;
 	// otherwise, its inclusion is OPTIONAL.
-	AuthTime jwt.NumericDate `json:"auth_time,omitempty"`
+	AuthTime *jwt.NumericDate `json:"auth_time,omitempty"`
 	// String value used to associate a Client session with an ID Token, and to mitigate replay attacks. If present in
 	// the ID Token, Clients MUST verify that the nonce Claim Value is equal to the value of the nonce parameter sent in
 	// the Authentication Request. If present in the Authentication Request, Authorization Servers MUST include a nonce
@@ -124,14 +124,13 @@ type IDToken struct {
 	// The key is a bare key in JWK [JWK] format (not an X.509 certificate value). The sub_jwk value is a JSON object. Use of
 	// the sub_jwk Claim is NOT RECOMMENDED when the OP is not Self-Issued.
 	// see https://openid.net/specs/openid-connect-core-1_0.html#SelfIssuedResponse
-	SubJWK jose.JSONWebKey `json:"sub_jwk"`
+	SubJWK *jose.JSONWebKey `json:"sub_jwk,omitempty"`
+
+	jwt.RegisteredClaims
 }
 
-// Valid implements jwt.Claims
-func (id IDToken) Valid() error {
-	// TODO
-	return nil
-}
+// CustomClaims alias jwt.MapClaims
+type CustomClaims = jwt.MapClaims
 
 // UserInfo This specification defines a set of standard Claims. They can be requested to be returned either in the UserInfo
 // Response, per Section 5.3.2, or in the ID Token, per Section 2.
@@ -173,7 +172,7 @@ type UserInfo struct {
 	// OP took affirmative steps to ensure that this e-mail address was controlled by the End-User at the time the verification was
 	// performed. The means by which an e-mail address is verified is context-specific, and dependent upon the trust framework or
 	// contractual agreements within which the parties are operating.
-	EmailVerified bool `json:"email_verified,omitempty"`
+	EmailVerified *bool `json:"email_verified,omitempty"`
 	// End-User's gender. Values defined by this specification are female and male. Other values MAY be used when neither of the defined
 	// values are applicable.
 	Gender string `json:"gender,omitempty"`
@@ -199,13 +198,15 @@ type UserInfo struct {
 	// The means by which a phone number is verified is context-specific, and dependent upon the trust framework or contractual
 	// agreements within which the parties are operating. When true, the phone_number Claim MUST be in E.164 format and any extensions
 	// MUST be represented in RFC 3966 format.
-	PhoneNumberVerified bool `json:"phone_number_verified,omitempty"`
+	PhoneNumberVerified *bool `json:"phone_number_verified,omitempty"`
 	// End-User's preferred postal address. The value of the address member is a JSON [RFC4627] structure containing some or all of the
 	// members defined in Section 5.1.1.
-	Address Address `json:"address,omitempty"`
+	Address *Address `json:"address,omitempty"`
 	// Time the End-User's information was last updated. Its value is a JSON number representing the number of seconds from
 	// 1970-01-01T0:0:0Z as measured in UTC until the date/time.
 	UpdatedAt jwt.NumericDate `json:"updated_at,omitempty"`
+
+	jwt.MapClaims
 }
 
 // Address The Address Claim represents a physical mailing address.
