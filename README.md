@@ -22,7 +22,7 @@ Golang OAuth2/OIDC Server Library.
   - [ ] SAML2 Bearer
   - [ ] Device Code
   - [ ] JWT Access Token
-- [ ] PKCE
+- [x] PKCE
 - [ ] Session Management
 - [ ] Token Revocation
 - [ ] Request Object

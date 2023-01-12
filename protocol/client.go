@@ -7,6 +7,49 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+// ClientType OAuth defines two client types, based on their ability to authenticate securely with the
+// authorization server (i.e., ability to maintain the confidentiality of their client credentials)
+// https://www.rfc-editor.org/rfc/rfc6749#section-2.1
+type ClientType string
+
+// client type
+const (
+	// Clients capable of maintaining the confidentiality of their credentials (e.g., client implemented on a
+	// secure server with restricted access to the client credentials), or capable of secure client
+	// authentication using other means.
+	ClientTypeConfidential ClientType = "confidential"
+	// Clients incapable of maintaining the confidentiality of their credentials (e.g., clients executing on
+	// the device used by the resource owner, such as an installed native application or a web browser-based
+	// application), and incapable of secure client authentication via any other means.
+	ClientTypePublic ClientType = "public"
+)
+
+// ClientProfile OAuth2 has been designed around the following client profiles
+type ClientProfile string
+
+// client profile list
+const (
+	// A web application is a confidential client running on a web server.  Resource owners access the client
+	// via an HTML user interface rendered in a user-agent on the device used by the resource owner.  The
+	// client credentials as well as any access token issued to the client are stored on the web server and
+	// are not exposed to or accessible by the resource owner.
+	ClientProfileWeb = "web_app"
+	// A user-agent-based application is a public client in which the client code is downloaded from a web
+	// server and executes within a user-agent (e.g., web browser) on the device used by the resource owner.
+	// Protocol data and credentials are easily accessible (and often visible) to the resource owner. Since
+	// such applications reside within the user-agent, they can make seamless use of the user-agent
+	// capabilities when requesting authorization.
+	ClientProfileUserAgent = "useragent_app"
+	// A native application is a public client installed and executed on the device used by the resource owner.
+	// Protocol data and credentials are accessible to the resource owner. It is assumed that any client
+	// authentication credentials included in the application can be extracted. On the other hand, dynamically
+	// issued credentials such as access tokens or refresh tokens can receive an acceptable level of protection.
+	// At a minimum, these credentials are protected from hostile servers with which the application may
+	// interact.  On some platforms, these credentials might be protected from other applications residing on
+	// the same device.
+	ClientProfileNative = "native_app"
+)
+
 // ClientAuthMethod This section defines a set of Client Authentication methods that are used by Clients to
 // authenticate to the Authorization Server when using the Token Endpoint. During Client Registration, the RP
 // (Client) MAY register a Client Authentication method. If no method is registered, the default method is
@@ -101,7 +144,7 @@ var DefaultExpirations = Expirations{
 type Client interface {
 	// ClientID return client id
 	ClientID() string
-	// ClientSecret return client secret
+	// ClientSecret return client secret, NOTE public client should not return secret key
 	ClientSecret() string
 	// RedirectURI return client redirect uri, multiple URLs by comma-separating.
 	// see https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2

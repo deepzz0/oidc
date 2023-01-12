@@ -56,7 +56,7 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 		// https: //tools.ietf.org/html/rfc7636#section-4.6
 		codeVerifier := ""
 		switch authData.CodeChallengeMethod {
-		case "", protocol.CodeChallengeMethodPlain:
+		case protocol.CodeChallengeMethodPlain:
 			codeVerifier = req.CodeVerifier
 		case protocol.CodeChallengeMethodS256:
 			hash := sha256.Sum256([]byte(req.CodeVerifier))

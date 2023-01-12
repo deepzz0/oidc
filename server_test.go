@@ -643,7 +643,7 @@ func TestUserInfoEndpoint(t *testing.T) {
 				t.Fatal(err)
 			}
 			assert.Equal(t, 200, w.Code)
-			t.Log(w.Body.String())
+			t.Log(strings.TrimSpace(w.Body.String()))
 		}
 	}
 }

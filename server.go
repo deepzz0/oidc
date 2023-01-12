@@ -29,7 +29,7 @@ func NewServer(options ...Option) *Server {
 		AllowClientSecretInParams: false,
 		AllowGetAccessRequest:     false,
 		RedirectURISeparator:      ",",
-		ForcePKCEForPublicClients: false,
+		ForcePKCEForPublicClients: true,
 		SupportedRequestObject:    false,
 		RetainTokenAfrerRefresh:   false,
 	}
