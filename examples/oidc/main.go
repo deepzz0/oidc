@@ -23,6 +23,7 @@ var (
 		oidc.WithIssuer(issuer),
 		oidc.WithStorage(examples.NewTestStorage()),
 		oidc.WithDefaultScopes([]string{protocol.ScopeEmail}),
+		oidc.WithSession(&examples.TestSession{}),
 	)
 )
 
@@ -38,6 +39,7 @@ func main() {
 		oidc.GET("/authorize", handleOIDCAuthorize)
 		oidc.POST("/token", handleOIDCToken)
 		oidc.GET("/userinfo", handleOIDCUserInfo)
+		oidc.GET("/check-session", handleCheckSession)
 		oidc.GET("/end-session", handleOIDCEndSession)
 		oidc.GET("/revocation", handleOIDCRevocation)
 	}
@@ -53,6 +55,7 @@ func handleOIDCDiscovery(c *gin.Context) {
 		AuthorizationEndpoint:       issuer + "/authorize",
 		TokenEndpoint:               issuer + "/token",
 		UserinfoEndpoint:            issuer + "/userinfo",
+		CheckSessionIframe:          issuer + "/check-session",
 		EndSessionEndpoint:          issuer + "/end-session",
 		RevocationEndpoint:          issuer + "/revocation",
 		DeviceAuthorizationEndpoint: issuer + "/device-code",
@@ -136,12 +139,12 @@ func handleOIDCJwksJSON(c *gin.Context) {
 
 func handleOIDCAuthorize(c *gin.Context) {
 	resp := protocol.NewResponse()
-	if ad := server.HandleAuthorizeRequest(resp, c.Request); ad != nil {
+	if req := server.HandleAuthorizeRequest(resp, c.Request); req != nil {
 		// TODO 判断是否登录，未登录重定向到登录页面
 
-		ad.UserID = "1234"
-		fmt.Println("authorized ", ad.UserID)
-		server.FinishAuthorizeRequest(resp, c.Request, ad)
+		req.UserID = "1234"
+		fmt.Println("authorized ", req.UserID)
+		server.FinishAuthorizeRequest(resp, c.Request, req)
 	}
 	if resp.ErrCode != nil {
 		log.Println(resp.ErrCode)
@@ -151,15 +154,16 @@ func handleOIDCAuthorize(c *gin.Context) {
 
 func handleOIDCToken(c *gin.Context) {
 	resp := protocol.NewResponse()
-	if ad := server.HandleTokenRequest(resp, c.Request); ad != nil {
-		fmt.Println(ad.UserID)
-		if ad.GrantType == protocol.GrantTypePassword {
+	if req := server.HandleTokenRequest(resp, c.Request); req != nil {
+		fmt.Println(req.UserID)
+		// if grant_type == passord, should validate username & password
+		if req.GrantType == protocol.GrantTypePassword {
 			// validate username and password
-			if ad.Username == "1234" && ad.Password == "4321" {
-				ad.UserID = "1234"
+			if req.Username == "1234" && req.Password == "4321" {
+				req.UserID = "1234"
 			}
 		}
-		server.FinishTokenRequest(resp, c.Request, ad)
+		server.FinishTokenRequest(resp, c.Request, req)
 	}
 	if resp.ErrCode != nil {
 		fmt.Println("ERROR: ", resp.ErrCode)
@@ -168,7 +172,25 @@ func handleOIDCToken(c *gin.Context) {
 }
 
 func handleOIDCUserInfo(c *gin.Context) {
+	resp := protocol.NewResponse()
+	if req := server.HandleUserInfoRequest(resp, c.Request); req != nil {
+		server.FinishUserInfoRequest(resp, c.Request, req)
+	}
+	if resp.ErrCode != nil {
+		fmt.Println("ERROR: ", resp.ErrCode)
+	}
+	protocol.OutputJSON(resp, c.Writer, c.Request)
+}
 
+func handleCheckSession(c *gin.Context) {
+	resp := protocol.NewResponse()
+	if req := server.HandleCheckSessionEndpoint(resp, c.Request); req != nil {
+		server.FinishCheckSessionRequest(resp, c.Writer, req)
+	}
+	if resp.ErrCode != nil {
+		fmt.Println("ERROR: ", resp.ErrCode)
+	}
+	protocol.OutputHTML(resp, c.Writer, c.Request)
 }
 
 func handleOIDCEndSession(c *gin.Context) {

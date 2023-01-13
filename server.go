@@ -536,7 +536,7 @@ func (s *Server) FinishRevocationRequest(resp *protocol.Response, r *http.Reques
 }
 
 // HandleCheckSessionEndpoint check_session endpoint
-func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, w http.ResponseWriter, r *http.Request) *protocol.CheckSessionRequest {
+func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, r *http.Request) *protocol.CheckSessionRequest {
 	if s.options.Session == nil {
 		resp.SetErrorURI(protocol.ErrServerError.Desc("The op dose not support session endpoint"), "", "")
 		return nil
@@ -563,15 +563,11 @@ func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, w http.Resp
 // FinishCheckSessionRequest check_session_iframe request finish
 func (s *Server) FinishCheckSessionRequest(resp *protocol.Response, w http.ResponseWriter, req *protocol.CheckSessionRequest) {
 	resp.Output["origin"] = req.Origin
-	err := protocol.CheckSessionIframe.Execute(w, resp.Output)
-	if err != nil {
-		resp.SetErrorURI(protocol.ErrServerError.Desc("failed to render template, please contact admin"), "", "")
-		return
-	}
+
 	u, _ := url.Parse(s.options.Issuer)
 	sid := &http.Cookie{
 		Name:  "sid",
-		Value: fmt.Sprint(req.Login), // true / false
+		Value: fmt.Sprint(req.ExpiresIn > 0), // true / false
 
 		Domain: u.Host,
 		Path:   "/",
@@ -583,6 +579,11 @@ func (s *Server) FinishCheckSessionRequest(resp *protocol.Response, w http.Respo
 		sid.Expires = time.Now().Add(time.Duration(sid.MaxAge) * time.Second)
 	}
 	http.SetCookie(w, sid)
+	err := protocol.CheckSessionIframe.Execute(w, resp.Output)
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrServerError.Desc("failed to render template, please contact admin"), "", "")
+		return
+	}
 }
 
 // HandleEndSessionEndpoint end_session endpoint

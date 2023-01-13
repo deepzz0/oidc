@@ -5,7 +5,9 @@ import "text/template"
 
 // Session session manager
 type Session interface {
+	// AllowedOrigin is that postMessage from op host
 	AllowedOrigin() string
+	// SessionExpiresIn user session expires with cookie
 	SessionExpiresIn(cookie string) int
 }
 

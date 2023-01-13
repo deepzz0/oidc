@@ -136,6 +136,5 @@ type CheckSessionRequest struct {
 	ClientID string `schema:"client_id"`
 
 	Origin    string `schema:"-"`
-	Login     bool   `schema:"-"` // <=0 not log >0 logined
 	ExpiresIn int    `schema:"-"`
 }
