@@ -122,3 +122,20 @@ type RevocationRequest struct {
 
 	Client Client `json:"-" schema:"-"`
 }
+
+// EndSessionRequest end_session endpoint
+type EndSessionRequest struct {
+	IDTokenHint           string `schema:"id_token_hint"`
+	ClientID              string `schema:"client_id"`
+	PostLogoutRedirectURI string `schema:"post_logout_redirect_uri"`
+	State                 string `schema:"state"`
+}
+
+// CheckSessionRequest check_session_iframe endpoint
+type CheckSessionRequest struct {
+	ClientID string `schema:"client_id"`
+
+	Origin    string `schema:"-"`
+	Login     bool   `schema:"-"` // <=0 not log >0 logined
+	ExpiresIn int    `schema:"-"`
+}

@@ -43,6 +43,7 @@ type Options struct {
 	DefaultScopes []protocol.Scope
 
 	Storage protocol.Storage
+	Session protocol.Session
 }
 
 // WithIssuer specify the issuer for jwt
@@ -101,6 +102,13 @@ func WithRetainTokenAfterRefresh(s bool) Option {
 	}
 }
 
+// WithDefaultScopes set default scopes
+func WithDefaultScopes(scopes []protocol.Scope) Option {
+	return func(opts *Options) {
+		opts.DefaultScopes = scopes
+	}
+}
+
 // WithStorage implements protocol.Storage object
 func WithStorage(storage protocol.Storage) Option {
 	return func(opts *Options) {
@@ -108,9 +116,9 @@ func WithStorage(storage protocol.Storage) Option {
 	}
 }
 
-// WithDefaultScopes set default scopes
-func WithDefaultScopes(scopes []protocol.Scope) Option {
+// WithSession session management for check_session_iframe/end_session_endpoint
+func WithSession(sess protocol.Session) Option {
 	return func(opts *Options) {
-		opts.DefaultScopes = scopes
+		opts.Session = sess
 	}
 }

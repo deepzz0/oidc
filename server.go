@@ -4,6 +4,7 @@ package oidc
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -34,6 +35,7 @@ func NewServer(options ...Option) *Server {
 		ForcePKCEForPublicClients: true,
 		SupportedRequestObject:    false,
 		RetainTokenAfrerRefresh:   false,
+		DefaultScopes:             []protocol.Scope{protocol.ScopeProfile},
 	}
 	for _, o := range options {
 		o(&opts)
@@ -531,6 +533,56 @@ func (s *Server) FinishRevocationRequest(resp *protocol.Response, r *http.Reques
 	}
 	// An invalid token type hint value is ignored by the authorization server and does not influence the
 	// revocation response.
+}
+
+// HandleCheckSessionEndpoint check_session endpoint
+func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, w http.ResponseWriter, r *http.Request) *protocol.CheckSessionRequest {
+	if s.options.Session == nil {
+		resp.SetErrorURI(protocol.ErrServerError.Desc("The op dose not support session endpoint"), "", "")
+		return nil
+	}
+	// check referer host
+	req := &protocol.CheckSessionRequest{}
+	err := s.decoder.Decode(req, r.Form)
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
+		return nil
+	}
+	origin, err := ValidateURI(s.options.Session.AllowedOrigin(), r.Header.Get("Referer"))
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("failed to validate Referer"), "", "")
+		return nil
+	}
+	req.Origin = origin
+	// check log state
+	cookie := r.Header.Get("Cookie")
+	req.ExpiresIn = s.options.Session.SessionExpiresIn(cookie)
+	return req
+}
+
+// FinishCheckSessionRequest check_session_iframe request finish
+func (s *Server) FinishCheckSessionRequest(resp *protocol.Response, w http.ResponseWriter, req *protocol.CheckSessionRequest) {
+	resp.Output["origin"] = req.Origin
+	err := protocol.CheckSessionIframe.Execute(w, resp.Output)
+	if err != nil {
+		resp.SetErrorURI(protocol.ErrServerError.Desc("failed to render template, please contact admin"), "", "")
+		return
+	}
+	u, _ := url.Parse(s.options.Issuer)
+	sid := &http.Cookie{
+		Name:  "sid",
+		Value: fmt.Sprint(req.Login), // true / false
+
+		Domain: u.Host,
+		Path:   "/",
+
+		MaxAge: req.ExpiresIn,
+		Secure: true,
+	}
+	if sid.MaxAge > 0 {
+		sid.Expires = time.Now().Add(time.Duration(sid.MaxAge) * time.Second)
+	}
+	http.SetCookie(w, sid)
 }
 
 // HandleEndSessionEndpoint end_session endpoint

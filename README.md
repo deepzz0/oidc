@@ -1,4 +1,4 @@
-# oidc
+#  oidc
 Golang OAuth2/OIDC Server Library.
 
 ![OpenIDConnect-Map-4Feb2014.png](./assets/OpenIDConnect-Map-4Feb2014.png)
@@ -23,7 +23,10 @@ Golang OAuth2/OIDC Server Library.
   - [ ] Device Code
   - [ ] JWT Access Token
 - [x] PKCE For Public Cilents
-- [ ] Session Management
+- [ ] Session Management:
+  - [x] Check Session
+  - [ ] End Session
+
 - [x] Token Revocation
 - [ ] Request Object
 - [ ] Dynamic Client Registration
