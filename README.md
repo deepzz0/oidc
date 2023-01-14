@@ -17,19 +17,21 @@ Golang OAuth2/OIDC Server Library.
   - [x] Client Credentials
   - [x] Password `Legacy`
   - [x] Implicit Flow `Legacy`
-  - [ ] JWT Bearer
-  - [ ] Token Exchange
-  - [ ] SAML2 Bearer
-  - [ ] Device Code
-  - [ ] JWT Access Token
-- [x] PKCE For Public Cilents
+  - [ ] Assertion:
+    - [ ]  JWT Bearer
+    - [ ] Token Exchange
+    - [ ] SAML2 Bearer
+    - [ ] Device Code
+- [x] PKCE For Public Cilents: `plain`, `S256`
 - [ ] Session Management:
   - [x] Check Session
-  - [ ] End Session
-
+  - [ ] End Session: `Front Channel`, `Backend Channel`
 - [x] Token Revocation
 - [ ] Request Object
 - [ ] Dynamic Client Registration
+- [ ] Self Issued OP
+- [x] Known Scopes: `openid`, `email`, `profile`, `phone`, `address`, `offline_access`
+- [x] Token Type Support: `Bearer`, `JWT`
 - [x] ID Token Signing Algo: `HS256`, `RS256`, `ES256`
 - [x] Client Auth Method:  `client_secret_basic`, `client_secret_post`
 - [x] Hybrid Response Type: `code`, `token`, `id_token`

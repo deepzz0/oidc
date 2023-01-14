@@ -36,9 +36,6 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 	}
 	// check redirect uri
 	uri := req.Client.RedirectURI()
-	if uri == "" {
-		return protocol.ErrUnauthorizedClient.Desc("client redirect uri is empty")
-	}
 	req.RedirectURI, err = ValidateURIList(uri, req.RedirectURI, s.options.RedirectURISeparator)
 	if err != nil {
 		return protocol.ErrInvalidRequest.Desc("error validating client redirect uri")
@@ -67,10 +64,15 @@ func (s *Server) handleAuthorizationCodeRequest(resp *protocol.Response, r *http
 		if codeVerifier != req.AuthorizeData.CodeChallenge {
 			return protocol.ErrInvalidGrant.Wrap(errors.New("code_verifier failed comparison with code_challenge")).
 				Desc("pkce code verifier does not match challenge")
-
 		}
 	}
-	req.GenerateRefresh = true
+	// OIDC: https://openid.net/specs/openid-connect-core-1_0.html#OfflineAccess
+	if req.AuthorizeData.OpenID { // oidc offline_access
+		req.GenerateRefresh = req.AuthorizeData.OfflineAccess
+	} else {
+		// OAuth2: https://www.rfc-editor.org/rfc/rfc6749#section-4.1
+		req.GenerateRefresh = true
+	}
 	req.UserID = req.AuthorizeData.UserID
 	return nil
 }

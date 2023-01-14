@@ -127,26 +127,48 @@ func ValidateURIList(baseURIList, redirectURI, separator string) (realRedirectUR
 }
 
 // ValidateScopes validates the scopes & remove invalid scope
-func ValidateScopes(cli protocol.Client, scopes []string, defaultScopes []string) ([]string, bool) {
+func ValidateScopes(cli protocol.Client, scopes []string, defaultScopes []string,
+	respTypeCode bool, prompt []string) ([]string, bool, bool) {
+
 	openIDScope := false
+	offlineAccessScope := 0
 	for i := len(scopes) - 1; i >= 0; i-- {
 		scope := scopes[i]
+
 		if scope == protocol.ScopeOpenID {
 			openIDScope = true
 			continue
 		}
+		if scope == protocol.ScopeOfflineAccess {
+			offlineAccessScope = i
+		}
 		if !(scope == protocol.ScopeProfile || scope == protocol.ScopeEmail ||
 			scope == protocol.ScopeAddress || scope == protocol.ScopePhone ||
-			scope == protocol.ScopeOfflineAccess) &&
-			!cli.IsScopeAllowed(scope) { // ignore unknown scope
+			scope == protocol.ScopeOfflineAccess) && !cli.IsScopeAllowed(scope) { // ignore unknown scope
 			scopes[i] = scopes[len(scopes)-1]
 			scopes = scopes[:len(scopes)-1]
+		}
+	}
+	// MUST ignore the offline_access request unless the Client is using a response_type value that would
+	// result in an Authorization Code being returned,
+	// https://openid.net/specs/openid-connect-core-1_0.html#OfflineAccess
+	if offlineAccessScope > 0 {
+		found := false
+		for _, p := range prompt {
+			if protocol.Prompt(p) == protocol.PromptConsent {
+				found = true
+			}
+		}
+		// not oidc or not found consent prompt
+		if !openIDScope || !found {
+			offlineAccessScope = 0
+			scopes = append(scopes[:offlineAccessScope], scopes[offlineAccessScope+1:]...)
 		}
 	}
 	if len(scopes) == 0 {
 		scopes = defaultScopes
 	}
-	return scopes, openIDScope
+	return scopes, openIDScope, offlineAccessScope > 0
 }
 
 func containsResponseType(types []protocol.ResponseType, ty string) bool {
@@ -260,6 +282,7 @@ func ValidatePrompt(prompts []string, maxAge int) (int, error) {
 		if !protocol.IsValidPrompt(p) {
 			return 0, errors.New("Unsupported prompt parameter: " + v)
 		}
+		//  If this parameter contains none with any other value, an error is returned.
 		if p == protocol.PromptNone && len(prompts) > 1 {
 			return 0, errors.New("The prompt parameter 'none' must only be used as a signle value")
 		}
@@ -274,4 +297,20 @@ func ValidatePrompt(prompts []string, maxAge int) (int, error) {
 func ValidateTokenHint(hint protocol.TokenTypeHint) bool {
 	return hint == protocol.TokenTypeHintAccessToken ||
 		hint == protocol.TokenTypeHintRefreshToken
+}
+
+// ValidateOfflineAccess validate offline_access
+func ValidateOfflineAccess(prompt []string, scopes []string) ([]string, bool, error) {
+	// ignoreScope := true
+	// for _, p := range prompt {
+	// 	if protocol.Prompt(p) == protocol.PromptConsent {
+	// 		for _, s := range scopes {
+	// 			if s == protocol.ScopeOfflineAccess {
+	// 				return true
+	// 			}
+	// 		}
+	// 	}
+	// }
+	//
+	return nil, false, nil
 }

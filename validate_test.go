@@ -22,7 +22,7 @@ func init() {
 
 func TestValidateScopes(t *testing.T) {
 	testcases := [][]string{
-		{
+		{ // all
 			protocol.ScopeProfile,
 			protocol.ScopeEmail,
 			protocol.ScopeAddress,
@@ -30,17 +30,33 @@ func TestValidateScopes(t *testing.T) {
 			protocol.ScopeOfflineAccess,
 			protocol.ScopeOpenID,
 		},
-		{
+		{ // ignore unknown
 			protocol.ScopeProfile,
-			protocol.ScopeOfflineAccess,
 			"scope1",
 			"scope2",
 		},
-		{},
+		{}, // default scope
+		{ // ignore offline_access
+			protocol.ScopeOfflineAccess,
+			protocol.ScopeProfile,
+		},
+		{
+			protocol.ScopeOfflineAccess,
+		},
 	}
-	for _, v := range testcases {
-		scope, openid := ValidateScopes(cli, v, []string{"scope3"})
-		t.Log(scope, openid)
+	for i, v := range testcases {
+		var (
+			respTypeCode bool
+			prompt       []string
+		)
+		if i == 4 {
+			respTypeCode = true
+			prompt = []string{
+				"consent",
+			}
+		}
+		scope, openid, offline := ValidateScopes(cli, v, []string{"scope3"}, respTypeCode, prompt)
+		t.Log(scope, openid, offline)
 	}
 }
 

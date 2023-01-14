@@ -53,6 +53,7 @@ type TestClient struct {
 	ID       string
 	Secret   string
 	Redirect string
+	Type     protocol.ClientType
 }
 
 // ClientID return client id
@@ -63,6 +64,11 @@ func (c *TestClient) ClientID() string {
 // ClientSecret return client secret
 func (c *TestClient) ClientSecret() string {
 	return c.Secret
+}
+
+// ClientType return client type
+func (c *TestClient) ClientType() protocol.ClientType {
+	return c.Type
 }
 
 // RedirectURI return client redirect uri, multiple URLs by comma-separating

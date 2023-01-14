@@ -64,7 +64,7 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 			Issuer:    s.options.Issuer,
 			Subject:   req.UserID,
 			ID:        tokenID,
-			Audience:  jwt.ClaimStrings{req.Client.ClientID()},
+			Audience:  append(req.Audience, req.Client.ClientID()),
 		}
 		token, err = signPayload(req.Client, claims)
 		if err != nil {

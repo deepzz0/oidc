@@ -156,7 +156,7 @@ func handleOIDCToken(c *gin.Context) {
 	resp := protocol.NewResponse()
 	if req := server.HandleTokenRequest(resp, c.Request); req != nil {
 		fmt.Println(req.UserID)
-		// if grant_type == passord, should validate username & password
+		// if grant_type == passord, should authenticate user
 		if req.GrantType == protocol.GrantTypePassword {
 			// validate username and password
 			if req.Username == "1234" && req.Password == "4321" {

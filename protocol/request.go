@@ -33,8 +33,10 @@ type AuthorizeRequest struct {
 	// request object TODO
 	Request string `json:"request,omitempty" schema:"request"`
 
-	UserID string `json:"user_id,omitempty" schema:"-"` // logined userID
-	Client Client `json:"-" schema:"-"`
+	UserID        string `json:"user_id,omitempty" schema:"-"` // logined userID
+	OpenID        bool   `json:"open_id,omitempty" schema:"-"`
+	OfflineAccess bool   `json:"offline_access,omitempty" schema:"-"`
+	Client        Client `json:"-" schema:"-"`
 }
 
 // AuthorizeData authorize data
@@ -113,6 +115,7 @@ type UserInfoRequest struct {
 	Token string
 
 	AccessData *AccessData
+	Subject    string
 }
 
 // RevocationRequest revocation endpoint
@@ -123,18 +126,18 @@ type RevocationRequest struct {
 	Client Client `json:"-" schema:"-"`
 }
 
-// EndSessionRequest end_session endpoint
-type EndSessionRequest struct {
-	IDTokenHint           string `schema:"id_token_hint"`
-	ClientID              string `schema:"client_id"`
-	PostLogoutRedirectURI string `schema:"post_logout_redirect_uri"`
-	State                 string `schema:"state"`
-}
-
 // CheckSessionRequest check_session_iframe endpoint
 type CheckSessionRequest struct {
 	ClientID string `schema:"client_id"`
 
 	Origin    string `schema:"-"`
 	ExpiresIn int    `schema:"-"`
+}
+
+// EndSessionRequest end_session endpoint
+type EndSessionRequest struct {
+	IDTokenHint           string `schema:"id_token_hint"`
+	ClientID              string `schema:"client_id"`
+	PostLogoutRedirectURI string `schema:"post_logout_redirect_uri"`
+	State                 string `schema:"state"`
 }

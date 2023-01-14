@@ -24,8 +24,8 @@ const (
 	ClientTypePublic ClientType = "public"
 )
 
-// ClientProfile OAuth2 has been designed around the following client profiles
-type ClientProfile string
+// ClientAppType OAuth2 has been designed around the following client profiles
+type ClientAppType string
 
 // client profile list
 const (
@@ -33,13 +33,13 @@ const (
 	// via an HTML user interface rendered in a user-agent on the device used by the resource owner.  The
 	// client credentials as well as any access token issued to the client are stored on the web server and
 	// are not exposed to or accessible by the resource owner.
-	ClientProfileWeb = "web_app"
+	ClientAppTypeWeb = "web"
 	// A user-agent-based application is a public client in which the client code is downloaded from a web
 	// server and executes within a user-agent (e.g., web browser) on the device used by the resource owner.
 	// Protocol data and credentials are easily accessible (and often visible) to the resource owner. Since
 	// such applications reside within the user-agent, they can make seamless use of the user-agent
 	// capabilities when requesting authorization.
-	ClientProfileUserAgent = "useragent_app"
+	ClientAppTypeUserAgent = "useragent"
 	// A native application is a public client installed and executed on the device used by the resource owner.
 	// Protocol data and credentials are accessible to the resource owner. It is assumed that any client
 	// authentication credentials included in the application can be extracted. On the other hand, dynamically
@@ -47,7 +47,7 @@ const (
 	// At a minimum, these credentials are protected from hostile servers with which the application may
 	// interact.  On some platforms, these credentials might be protected from other applications residing on
 	// the same device.
-	ClientProfileNative = "native_app"
+	ClientAppTypeNative = "native"
 )
 
 // ClientAuthMethod This section defines a set of Client Authentication methods that are used by Clients to
@@ -146,6 +146,8 @@ type Client interface {
 	ClientID() string
 	// ClientSecret return client secret, NOTE public client should not return secret key
 	ClientSecret() string
+	// ClientProfile client type
+	ClientType() ClientType
 	// RedirectURI return client redirect uri, multiple URLs by comma-separating.
 	// see https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2
 	RedirectURI() string

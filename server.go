@@ -97,9 +97,6 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 		return nil
 	}
 	req.Client = cli
-	// step. check request object
-	// TODO not implements
-	//
 	// step. redirect uri, oauth2 is optional, oidc is required
 	req.RedirectURI, err = url.QueryUnescape(req.RedirectURI)
 	if err != nil {
@@ -126,13 +123,23 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	// MUST either process the request using a pre-defined default value or fail the request indicating an
 	// invalid scope. The authorization server SHOULD document its scope requirements and default value (if defined).
 	// https://www.rfc-editor.org/rfc/rfc6749#section-3.3
-	var openIDScope bool
-	req.Scope, openIDScope = ValidateScopes(cli, req.Scope, s.options.DefaultScopes)
+	// https://openid.net/specs/openid-connect-core-1_0.html#OfflineAccess
+	req.Scope, req.OpenID, req.OfflineAccess = ValidateScopes(cli, req.Scope, s.options.DefaultScopes,
+		typesOK.ResponseTypeCode, req.Prompt)
 	if len(req.Scope) == 0 {
 		resp.SetErrorURI(protocol.ErrInvalidScope, "", req.State)
 		return nil
 	}
-	if openIDScope { // oidc
+	if req.OpenID { // oidc
+		// check prompt
+		req.MaxAge, err = ValidatePrompt(req.Prompt, req.MaxAge)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc(err.Error()), "", req.State)
+			return nil
+		}
+		// step. check request object
+		// TODO not implements
+		//
 		// "token" can't be provided by its own.
 		// https://openid.net/specs/openid-connect-core-1_0.html#Authentication
 		if typesOK.ResponseTypeToken && !typesOK.ResponseTypeCode && !typesOK.ResponseTypeIDToken {
@@ -152,12 +159,6 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 			resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("Invalid display option"), "", req.State)
 			return nil
 		}
-		// check prompt
-		req.MaxAge, err = ValidatePrompt(req.Prompt, req.MaxAge)
-		if err != nil {
-			resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc(err.Error()), "", req.State)
-			return nil
-		}
 		// check id_token_hint
 		userID, err := ValidateIDTokenHint(req.IDTokenHint)
 		if err != nil {
@@ -166,7 +167,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 		}
 		req.UserID = userID
 	}
-	// step. check code challenge
+	// step. check code challenge with PKCE
 	if typesOK.ResponseTypeCode || typesOK.ResponseTypeDevice { // oauth2 flow
 		// Optional PKCE support (https://tools.ietf.org/html/rfc7636)
 		if req.CodeChallenge == "" {
@@ -374,6 +375,10 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 			resp.SetErrorURI(protocol.ErrAccessDenied.Wrap(err), "", "")
 			return
 		}
+		// oidc must return subject
+		if ui.Subject == "" {
+			ui.Subject = req.UserID
+		}
 	}
 	ret := &protocol.AccessData{
 		AccessRequest: req,
@@ -409,25 +414,23 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 	if len(ret.Scope) > 0 {
 		resp.Output["scope"] = ret.Scope.Encode()
 	}
-	for _, v := range ret.Scope {
-		// Verify that the Authorization Code used was issued in response to an OpenID Connect Authentication Request
-		// (so that an ID Token will be returned from the Token Endpoint). must be authorization_code
-		if ad := req.AuthorizeData; v == protocol.ScopeOpenID && ad != nil {
-			// UserData must be id_token data
-			claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData)
+	// Verify that the Authorization Code used was issued in response to an OpenID Connect Authentication Request
+	// (so that an ID Token will be returned from the Token Endpoint). must be authorization_code
+	if ad := req.AuthorizeData; ad != nil && ad.OpenID {
+		// UserData must be id_token data
+		claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData)
 
-			idToken, err := signPayload(req.Client, claims)
-			if err != nil {
-				resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
-				return
-			}
-			resp.Output["id_token"] = idToken
-			break
+		idToken, err := signPayload(req.Client, claims)
+		if err != nil {
+			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
+			return
 		}
+		resp.Output["id_token"] = idToken
 	}
 }
 
-// HandleUserInfoRequest userinfo endpoint
+// HandleUserInfoRequest userinfo endpoint, should support CORS
+// https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
 func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request) *protocol.UserInfoRequest {
 	// The Client sends the UserInfo Request using either HTTP GET or HTTP POST. The Access Token obtained from an
 	// OpenID Connect Authentication Request MUST be sent as a Bearer Token, per Section 2 of OAuth 2.0 Bearer Token
@@ -462,6 +465,8 @@ func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request)
 }
 
 // FinishUserInfoRequest userinfo request finish
+// The sub (subject) Claim MUST always be returned in the UserInfo Response.
+// https://openid.net/specs/openid-connect-core-1_0.html#UserInfoResponse
 func (s *Server) FinishUserInfoRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
 	resp.Output = structs.Map(req.AccessData.UserData)
 }
@@ -587,13 +592,13 @@ func (s *Server) FinishCheckSessionRequest(resp *protocol.Response, w http.Respo
 }
 
 // HandleEndSessionEndpoint end_session endpoint
-func (s *Server) HandleEndSessionEndpoint(resp *protocol.Response, r *http.Request) *protocol.UserInfoRequest {
+func (s *Server) HandleEndSessionEndpoint(resp *protocol.Response, r *http.Request) *protocol.EndSessionRequest {
 
 	return nil
 }
 
 // FinishEndSessionRequest end_session request finish
-func (s *Server) FinishEndSessionRequest(resp *protocol.Response, r *http.Request, req *protocol.UserInfoRequest) {
+func (s *Server) FinishEndSessionRequest(resp *protocol.Response, r *http.Request, req *protocol.EndSessionRequest) {
 
 }
 

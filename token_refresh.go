@@ -37,6 +37,6 @@ func (s *Server) handleRefreshTokenRequest(resp *protocol.Response, r *http.Requ
 		}
 	}
 	req.GenerateRefresh = true
-	req.UserID = req.AccessData.AccessRequest.UserID
+	req.UserID = req.AccessData.AccessRequest.UserID // previous user_id
 	return nil
 }
