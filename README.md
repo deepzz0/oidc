@@ -25,7 +25,7 @@ Golang OAuth2/OIDC Server Library.
 - [x] PKCE For Public Cilents: `plain`, `S256`
 - [ ] Session Management:
   - [x] Check Session
-  - [ ] End Session: `Front Channel`, `Backend Channel`
+  - [ ] End Session: `Front Channel`, `Back Channel`
 - [x] Token Revocation
 - [ ] Request Object
 - [ ] Dynamic Client Registration
@@ -35,7 +35,7 @@ Golang OAuth2/OIDC Server Library.
 - [x] ID Token Signing Algo: `HS256`, `RS256`, `ES256`
 - [x] Client Auth Method:  `client_secret_basic`, `client_secret_post`
 - [x] Hybrid Response Type: `code`, `token`, `id_token`
-- [x] Response Mode Support: `query`, `fragment`,`form_post`
+- [x] Response Mode Support: `query`, `fragment`, `form_post`
 
 Have fun!
 

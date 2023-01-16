@@ -541,6 +541,7 @@ func (s *Server) FinishRevocationRequest(resp *protocol.Response, r *http.Reques
 }
 
 // HandleCheckSessionEndpoint check_session endpoint
+// https://technospace.medium.com/managing-sessions-with-openid-connect-d3b6fb4f552b
 func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, r *http.Request) *protocol.CheckSessionRequest {
 	if s.options.Session == nil {
 		resp.SetErrorURI(protocol.ErrServerError.Desc("The op dose not support session endpoint"), "", "")
