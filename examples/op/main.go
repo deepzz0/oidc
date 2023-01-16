@@ -20,7 +20,6 @@ import (
 var (
 	issuer = "http://localhost:8080/oidc"
 	server = oidc.NewServer(
-		oidc.WithIssuer(issuer),
 		oidc.WithStorage(examples.NewTestStorage()),
 		oidc.WithDefaultScopes([]string{protocol.ScopeEmail}),
 		oidc.WithSession(&examples.TestSession{}),
@@ -139,7 +138,7 @@ func handleOIDCJwksJSON(c *gin.Context) {
 
 func handleOIDCAuthorize(c *gin.Context) {
 	resp := protocol.NewResponse()
-	if req := server.HandleAuthorizeRequest(resp, c.Request); req != nil {
+	if req := server.HandleAuthorizeRequest(resp, c.Request, issuer); req != nil {
 		// TODO 判断是否登录，未登录重定向到登录页面
 
 		req.UserID = "1234"
@@ -154,7 +153,7 @@ func handleOIDCAuthorize(c *gin.Context) {
 
 func handleOIDCToken(c *gin.Context) {
 	resp := protocol.NewResponse()
-	if req := server.HandleTokenRequest(resp, c.Request); req != nil {
+	if req := server.HandleTokenRequest(resp, c.Request, issuer); req != nil {
 		fmt.Println(req.UserID)
 		// if grant_type == passord, should authenticate user
 		if req.GrantType == protocol.GrantTypePassword {
@@ -173,7 +172,7 @@ func handleOIDCToken(c *gin.Context) {
 
 func handleOIDCUserInfo(c *gin.Context) {
 	resp := protocol.NewResponse()
-	if req := server.HandleUserInfoRequest(resp, c.Request); req != nil {
+	if req := server.HandleUserInfoRequest(resp, c.Request, issuer); req != nil {
 		server.FinishUserInfoRequest(resp, c.Request, req)
 	}
 	if resp.ErrCode != nil {
@@ -184,7 +183,7 @@ func handleOIDCUserInfo(c *gin.Context) {
 
 func handleCheckSession(c *gin.Context) {
 	resp := protocol.NewResponse()
-	if req := server.HandleCheckSessionEndpoint(resp, c.Request); req != nil {
+	if req := server.HandleCheckSessionEndpoint(resp, c.Request, issuer); req != nil {
 		server.FinishCheckSessionRequest(resp, c.Writer, req)
 	}
 	if resp.ErrCode != nil {

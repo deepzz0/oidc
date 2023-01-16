@@ -54,7 +54,7 @@ func NewServer(options ...Option) *Server {
 }
 
 // HandleAuthorizeRequest authorization endpoint
-func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request) *protocol.AuthorizeRequest {
+func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request, issuer string) *protocol.AuthorizeRequest {
 	// The authorization server MUST support the use of the HTTP "GET" method [RFC2616] for the authorization
 	// endpoint and MAY support the use of the "POST" method as well.
 	// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1
@@ -75,7 +75,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 
 	// Decode form params to struct
-	req := new(protocol.AuthorizeRequest)
+	req := &protocol.AuthorizeRequest{Iss: issuer}
 	err = s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
@@ -260,7 +260,7 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
 			return
 		}
-		claims := s.rebuildIDToken(req.Client, req, userData)
+		claims := s.rebuildIDToken(req.Client, req, userData, req.Iss)
 		// check at_hash, https://openid.net/specs/openid-connect-core-1_0.html#ImplicitIDToken
 		if at, ok := resp.Output["access_token"]; ok {
 			hash := sha256.Sum256([]byte(at.(string)))
@@ -278,7 +278,7 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 }
 
 // HandleTokenRequest token endpoint
-func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *protocol.AccessRequest {
+func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request, issuer string) *protocol.AccessRequest {
 	// The client MUST use the HTTP "POST" method when making access token requests.
 	// see https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2
 	if r.Method != http.MethodPost {
@@ -297,7 +297,7 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request) *p
 		return nil
 	}
 
-	req := &protocol.AccessRequest{}
+	req := &protocol.AccessRequest{Iss: issuer}
 	err = s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
@@ -418,7 +418,7 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 	// (so that an ID Token will be returned from the Token Endpoint). must be authorization_code
 	if ad := req.AuthorizeData; ad != nil && ad.OpenID {
 		// UserData must be id_token data
-		claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData)
+		claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData, req.Issuer)
 
 		idToken, err := signPayload(req.Client, claims)
 		if err != nil {
@@ -431,7 +431,7 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 
 // HandleUserInfoRequest userinfo endpoint, should support CORS
 // https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
-func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request) *protocol.UserInfoRequest {
+func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request, issuer string) *protocol.UserInfoRequest {
 	// The Client sends the UserInfo Request using either HTTP GET or HTTP POST. The Access Token obtained from an
 	// OpenID Connect Authentication Request MUST be sent as a Bearer Token, per Section 2 of OAuth 2.0 Bearer Token
 	// Usage [RFC6750].
@@ -455,6 +455,8 @@ func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request)
 
 	req := &protocol.UserInfoRequest{
 		Token: token,
+
+		Iss: issuer,
 	}
 	req.AccessData, err = s.options.Storage.LoadAccess(req.Token)
 	if err != nil {
@@ -473,7 +475,7 @@ func (s *Server) FinishUserInfoRequest(resp *protocol.Response, r *http.Request,
 
 // HandleRevocationRequest revocation endpoint, Implementations MUST support the revocation of refresh tokens and
 // SHOULD support the revocation of access tokens (see Implementation Note).
-func (s *Server) HandleRevocationRequest(resp *protocol.Response, r *http.Request) *protocol.RevocationRequest {
+func (s *Server) HandleRevocationRequest(resp *protocol.Response, r *http.Request, issuer string) *protocol.RevocationRequest {
 	// The client requests the revocation of a particular token by making an HTTP POST request to the token
 	// revocation endpoint URL.
 	// https://www.rfc-editor.org/rfc/rfc7009
@@ -487,7 +489,7 @@ func (s *Server) HandleRevocationRequest(resp *protocol.Response, r *http.Reques
 		return nil
 	}
 
-	req := &protocol.RevocationRequest{}
+	req := &protocol.RevocationRequest{Iss: issuer}
 	err = s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
@@ -542,13 +544,13 @@ func (s *Server) FinishRevocationRequest(resp *protocol.Response, r *http.Reques
 
 // HandleCheckSessionEndpoint check_session endpoint
 // https://technospace.medium.com/managing-sessions-with-openid-connect-d3b6fb4f552b
-func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, r *http.Request) *protocol.CheckSessionRequest {
+func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, r *http.Request, issuer string) *protocol.CheckSessionRequest {
 	if s.options.Session == nil {
 		resp.SetErrorURI(protocol.ErrServerError.Desc("The op dose not support session endpoint"), "", "")
 		return nil
 	}
 	// check referer host
-	req := &protocol.CheckSessionRequest{}
+	req := &protocol.CheckSessionRequest{Iss: issuer}
 	err := s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
@@ -570,7 +572,7 @@ func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, r *http.Req
 func (s *Server) FinishCheckSessionRequest(resp *protocol.Response, w http.ResponseWriter, req *protocol.CheckSessionRequest) {
 	resp.Output["origin"] = req.Origin
 
-	u, _ := url.Parse(s.options.Issuer)
+	u, _ := url.Parse(req.Iss)
 	sid := &http.Cookie{
 		Name:  "sid",
 		Value: fmt.Sprint(req.ExpiresIn > 0), // true / false
@@ -593,7 +595,7 @@ func (s *Server) FinishCheckSessionRequest(resp *protocol.Response, w http.Respo
 }
 
 // HandleEndSessionEndpoint end_session endpoint
-func (s *Server) HandleEndSessionEndpoint(resp *protocol.Response, r *http.Request) *protocol.EndSessionRequest {
+func (s *Server) HandleEndSessionEndpoint(resp *protocol.Response, r *http.Request, issuer string) *protocol.EndSessionRequest {
 
 	return nil
 }
@@ -671,12 +673,12 @@ func (s *Server) getBearerAuth(r *http.Request) string {
 var testHookTimeNow = func() time.Time { return time.Now() }
 
 func (s *Server) rebuildIDToken(cli protocol.Client, req *protocol.AuthorizeRequest,
-	ui *protocol.UserInfo) *protocol.IDToken {
+	ui *protocol.UserInfo, issuer string) *protocol.IDToken {
 
 	now := testHookTimeNow()
 	exps := cli.ExpirationOptions()
 	idToken := &protocol.IDToken{
-		Issuer:     s.options.Issuer,
+		Issuer:     issuer,
 		Subject:    ui.Subject,
 		Audience:   jwt.ClaimStrings{cli.ClientID()},
 		Expiration: jwt.NewNumericDate(now.Add(time.Second * time.Duration(exps.IDTokenExpiration))),

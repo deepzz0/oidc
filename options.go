@@ -23,8 +23,6 @@ type Option func(opts *Options)
 
 // Options oidc server options
 type Options struct {
-	Issuer string
-
 	// Token type access: default Bearer
 	TokenType TokenType
 	// If true allows client secret algo in params, it's not recommended: default false
@@ -44,13 +42,6 @@ type Options struct {
 
 	Storage protocol.Storage
 	Session protocol.Session
-}
-
-// WithIssuer specify the issuer for jwt
-func WithIssuer(iss string) Option {
-	return func(opts *Options) {
-		opts.Issuer = iss
-	}
 }
 
 // WithTokenType change default: Bearer to anothor

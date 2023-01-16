@@ -30,13 +30,14 @@ type AuthorizeRequest struct {
 	// code challenge
 	CodeChallenge       string              `json:"code_challenge,omitempty" schema:"code_challenge"`
 	CodeChallengeMethod CodeChallengeMethod `json:"code_challenge_method,omitempty" schema:"code_challenge_method"`
-	// request object TODO
+	// request object
 	Request string `json:"request,omitempty" schema:"request"`
 
 	UserID        string `json:"user_id,omitempty" schema:"-"` // logined userID
 	OpenID        bool   `json:"open_id,omitempty" schema:"-"`
 	OfflineAccess bool   `json:"offline_access,omitempty" schema:"-"`
 	Client        Client `json:"-" schema:"-"`
+	Iss           string `json:"-" schema:"-"` // dynamic issuer
 }
 
 // AuthorizeData authorize data
@@ -92,6 +93,7 @@ type AccessRequest struct {
 	AccessData      *AccessData    `json:"-" schema:"-"` // previous access data
 	Client          Client         `json:"-" schema:"-"`
 	GenerateRefresh bool           `json:"-" schema:"-"`
+	Iss             string         `json:"-" schema:"-"` // dynamic issuer
 }
 
 // AccessData access data
@@ -112,10 +114,11 @@ type AccessData struct {
 
 // UserInfoRequest userinfo request
 type UserInfoRequest struct {
-	Token string
+	Token string `schema:"-"`
 
-	AccessData *AccessData
-	Subject    string
+	Subject    string      `schema:"-"`
+	AccessData *AccessData `schema:"-"`
+	Iss        string      `schema:"-"` // dynamic issuer
 }
 
 // RevocationRequest revocation endpoint
@@ -123,7 +126,8 @@ type RevocationRequest struct {
 	Token         string        `schema:"token"` // access_token or refresh_token
 	TokenTypeHint TokenTypeHint `schema:"token_type_hint"`
 
-	Client Client `json:"-" schema:"-"`
+	Client Client `schema:"-"`
+	Iss    string `schema:"-"` // dynamic issuer
 }
 
 // CheckSessionRequest check_session_iframe endpoint
@@ -132,6 +136,7 @@ type CheckSessionRequest struct {
 
 	Origin    string `schema:"-"`
 	ExpiresIn int    `schema:"-"`
+	Iss       string `schema:"-"` // dynamic issuer
 }
 
 // EndSessionRequest end_session endpoint
@@ -140,4 +145,6 @@ type EndSessionRequest struct {
 	ClientID              string `schema:"client_id"`
 	PostLogoutRedirectURI string `schema:"post_logout_redirect_uri"`
 	State                 string `schema:"state"`
+
+	Iss string `schema:"-"` // dynamic issuer
 }

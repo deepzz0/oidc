@@ -146,7 +146,7 @@ type Client interface {
 	ClientID() string
 	// ClientSecret return client secret, NOTE public client should not return secret key
 	ClientSecret() string
-	// ClientProfile client type
+	// ClientType client type
 	ClientType() ClientType
 	// RedirectURI return client redirect uri, multiple URLs by comma-separating.
 	// see https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2

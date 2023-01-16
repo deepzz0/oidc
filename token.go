@@ -57,11 +57,11 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 	case TokenTypeJWT:
 		claims := jwt.RegisteredClaims{
 			// A usual scenario is to set the expiration time relative to the current time
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(exps.AccessTokenExpiration) *
-				time.Second)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second *
+				time.Duration(exps.AccessTokenExpiration))),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    s.options.Issuer,
+			Issuer:    req.Iss,
 			Subject:   req.UserID,
 			ID:        tokenID,
 			Audience:  append(req.Audience, req.Client.ClientID()),

@@ -188,7 +188,7 @@ type UserInfo struct {
 	Locale string `json:"locale,omitempty" structs:"locale,omitempty"`
 	// Time the End-User's information was last updated. Its value is a JSON number representing the number of seconds from
 	// 1970-01-01T0:0:0Z as measured in UTC until the date/time.
-	UpdatedAt jwt.NumericDate `json:"updated_at,omitempty" structs:"updated_at,omitempty"`
+	UpdatedAt *jwt.NumericDate `json:"updated_at,omitempty" structs:"updated_at,omitempty"`
 
 	// Scope: email
 	//

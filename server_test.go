@@ -21,7 +21,6 @@ var (
 
 func init() {
 	server = NewServer(
-		WithIssuer(issuer),
 		WithForcePKCEForPublicClients(false),
 		WithStorage(examples.NewTestStorage()),
 		WithDefaultScopes([]string{protocol.ScopeEmail}),
@@ -209,7 +208,7 @@ func TestAuthorizationEndpoint(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		resp := protocol.NewResponse()
-		req := server.HandleAuthorizeRequest(resp, r)
+		req := server.HandleAuthorizeRequest(resp, r, issuer)
 		assertExpectedEqualError(t, v, resp.ErrCode)
 		// authorization_code ok
 		if resp.ErrCode == nil {
@@ -366,7 +365,7 @@ func TestTokenAuthorizationCode(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		resp := protocol.NewResponse()
-		req := server.HandleTokenRequest(resp, r)
+		req := server.HandleTokenRequest(resp, r, issuer)
 		assertExpectedEqualError(t, v, resp.ErrCode)
 
 		// access ok
@@ -463,7 +462,7 @@ func TestTokenRefreshToken(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		resp := protocol.NewResponse()
-		req := server.HandleTokenRequest(resp, r)
+		req := server.HandleTokenRequest(resp, r, issuer)
 		assertExpectedEqualError(t, v, resp.ErrCode)
 
 		// access ok
@@ -521,7 +520,7 @@ func TestTokenPassword(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		resp := protocol.NewResponse()
-		req := server.HandleTokenRequest(resp, r)
+		req := server.HandleTokenRequest(resp, r, issuer)
 		if i < 1 { // valid by next
 			assertExpectedEqualError(t, v, resp.ErrCode)
 		}
@@ -569,7 +568,7 @@ func TestTokenCredentials(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		resp := protocol.NewResponse()
-		req := server.HandleTokenRequest(resp, r)
+		req := server.HandleTokenRequest(resp, r, issuer)
 		assertExpectedEqualError(t, v, resp.ErrCode)
 
 		// access ok
@@ -638,7 +637,7 @@ func TestUserInfoEndpoint(t *testing.T) {
 			r = httptest.NewRequest(http.MethodPost, url, strings.NewReader(v.vals.Encode()))
 		}
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req := server.HandleUserInfoRequest(resp, r)
+		req := server.HandleUserInfoRequest(resp, r, issuer)
 		assertExpectedEqualError(t, v, resp.ErrCode)
 		if req != nil {
 			server.FinishUserInfoRequest(resp, r, req)
