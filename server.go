@@ -181,7 +181,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 		if !ok && s.options.ForcePKCEForPublicClients {
 			// https://tools.ietf.org/html/rfc7636#section-4.4.1
 			resp.SetErrorURI(protocol.ErrInvalidRequest.
-				Desc("code_challenge (rfc7636) required for public clients"), "", req.State)
+				Desc("code_challenge_method (rfc7636) required for public clients"), "", req.State)
 			return nil
 		}
 		req.CodeChallengeMethod = codeChallMethod
@@ -418,7 +418,7 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 	// (so that an ID Token will be returned from the Token Endpoint). must be authorization_code
 	if ad := req.AuthorizeData; ad != nil && ad.OpenID {
 		// UserData must be id_token data
-		claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData, req.Issuer)
+		claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData, req.Iss)
 
 		idToken, err := signPayload(req.Client, claims)
 		if err != nil {
