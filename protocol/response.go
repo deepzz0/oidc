@@ -59,6 +59,16 @@ func (resp *Response) SetResponseMode(mode ResponseMode) {
 
 // GetStatusCode get the http status code
 func (resp *Response) GetStatusCode() int {
+	// judge response mode
+	switch resp.ResponseMode {
+	case ResponseModeFormPost:
+		return http.StatusOK
+	default: // query or fragment
+		// redirect status code
+		if resp.RedirectURL != "" {
+			return http.StatusFound
+		}
+	}
 	if resp.ErrCode != nil {
 		// define status code
 		e, ok := resp.ErrCode.(*Error)
@@ -66,16 +76,6 @@ func (resp *Response) GetStatusCode() int {
 			return http.StatusBadRequest
 		}
 		return e.statusCode
-	}
-	// judge response mode
-	switch resp.ResponseMode {
-	case ResponseModeFormPost:
-		return http.StatusOK
-	default:
-		// redirect status code
-		if resp.RedirectURL != "" {
-			return http.StatusFound
-		}
 	}
 	return http.StatusOK
 }
