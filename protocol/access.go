@@ -220,7 +220,7 @@ type UserInfo struct {
 	// members defined in Section 5.1.1.
 	Address *Address `json:"address,omitempty" structs:"address,omitempty"`
 
-	jwt.MapClaims `structs:"claims,omitempty"`
+	jwt.MapClaims `json:"claims,omitempty" structs:"claims,omitempty"`
 }
 
 // Address The Address Claim represents a physical mailing address.

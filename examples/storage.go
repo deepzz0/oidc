@@ -27,7 +27,7 @@ func NewTestStorage() *TestStorage {
 	s.clients["test_client_id"] = &TestClient{
 		ID:       "test_client_id",
 		Secret:   "aabbccdd",
-		Redirect: "http://localhost:9000/oidc/callback",
+		Redirect: "http://localhost:8090/oidc/callback",
 		Type:     protocol.ClientTypeConfidential,
 	}
 	return s

@@ -72,7 +72,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"code1"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 		},
 		expected: protocol.ErrUnsupportedResponseType,
@@ -82,7 +82,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email", "openid"},
 		},
@@ -93,7 +93,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"token", "id_token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email", "openid"},
 		},
@@ -104,7 +104,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"code"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email"},
 			"response_mode": {"form_post"},
@@ -116,7 +116,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"code"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email", "invalid scope"},
 		},
@@ -127,7 +127,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"code"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 		},
 		expected: nil,
@@ -137,7 +137,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 		},
 		expected: nil,
@@ -147,7 +147,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"id_token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email"},
 		},
@@ -158,7 +158,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"code token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email"},
 		},
@@ -169,7 +169,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"code id_token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email"},
 		},
@@ -180,7 +180,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"token id_token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email"},
 		},
@@ -191,7 +191,7 @@ var authorizeCases = []testcase{
 		vals: url.Values{
 			"client_id":     {"test_client_id"},
 			"response_type": {"code token id_token"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 			"state":         {"test_state"},
 			"scope":         {"email"},
 		},
@@ -235,17 +235,17 @@ func TestAuthorizationEndpoint(t *testing.T) {
 				if v.vals.Get("response_mode") == "form_post" {
 					t.Log(w.Body.String())
 				} else {
-					assert.Equal(t, "http://localhost:9000/oidc/callback?code=test_hook_code&state=test_state", location)
+					assert.Equal(t, "http://localhost:8090/oidc/callback?code=test_hook_code&state=test_state", location)
 				}
 			case "token":
 				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
 				assert.EqualValues(t, "Bearer", resp.Output["token_type"], resp.Output)
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=WHwAII5NYaTQda7SdGw0Pg&expires_in=3600&scope=email&state=test_state&token_type=Bearer", location)
+				assert.Equal(t, "http://localhost:8090/oidc/callback#access_token=WHwAII5NYaTQda7SdGw0Pg&expires_in=3600&scope=email&state=test_state&token_type=Bearer", location)
 			case "id_token":
 				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OX0.vPjyHpHFF0AcJqc-RO2XPfOr5u5Fo2nW7f-rvl6cUiqd0jKKPAeAUohiGUhU4PHtScPd2A-YLJOImywmxuSRP9AKzd96u2leeG-e7ZIGINcVXFy8n6xr9AUKSoaeHnMNd4QALolQ9WhNvAeUkLX9z-EgEd4RarrevrOyGI8bm1h9nJu2lrGweYSlry3lfh02ayrCYYsucZOaY7su3nxoVbkr6lrxiud3h1HqpOFXyCTmX51YLy159RcLLjs3cIHGMzDUVZmb0_M6oKM9YHjtaGXr4zt8JHFdiqmDsUinRVbLr3udyRiqd_LxpAgQtJzEqi6CfpF-8Rp1WzTx9KhVzw", resp.Output["id_token"], resp.Output)
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback#id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OX0.vPjyHpHFF0AcJqc-RO2XPfOr5u5Fo2nW7f-rvl6cUiqd0jKKPAeAUohiGUhU4PHtScPd2A-YLJOImywmxuSRP9AKzd96u2leeG-e7ZIGINcVXFy8n6xr9AUKSoaeHnMNd4QALolQ9WhNvAeUkLX9z-EgEd4RarrevrOyGI8bm1h9nJu2lrGweYSlry3lfh02ayrCYYsucZOaY7su3nxoVbkr6lrxiud3h1HqpOFXyCTmX51YLy159RcLLjs3cIHGMzDUVZmb0_M6oKM9YHjtaGXr4zt8JHFdiqmDsUinRVbLr3udyRiqd_LxpAgQtJzEqi6CfpF-8Rp1WzTx9KhVzw&state=test_state", location)
+				assert.Equal(t, "http://localhost:8090/oidc/callback#id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OX0.vPjyHpHFF0AcJqc-RO2XPfOr5u5Fo2nW7f-rvl6cUiqd0jKKPAeAUohiGUhU4PHtScPd2A-YLJOImywmxuSRP9AKzd96u2leeG-e7ZIGINcVXFy8n6xr9AUKSoaeHnMNd4QALolQ9WhNvAeUkLX9z-EgEd4RarrevrOyGI8bm1h9nJu2lrGweYSlry3lfh02ayrCYYsucZOaY7su3nxoVbkr6lrxiud3h1HqpOFXyCTmX51YLy159RcLLjs3cIHGMzDUVZmb0_M6oKM9YHjtaGXr4zt8JHFdiqmDsUinRVbLr3udyRiqd_LxpAgQtJzEqi6CfpF-8Rp1WzTx9KhVzw&state=test_state", location)
 			case "code token":
 				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
 				assert.Equal(t, "test_hook_code", resp.Output["code"])
@@ -256,7 +256,7 @@ func TestAuthorizationEndpoint(t *testing.T) {
 				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
 				assert.Equal(t, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OSwiYXRfaGFzaCI6ImVrdXA5akxsdm5ReEtlWV9JRHBubGNwNVNqeGp4N01XZ0Mwcks0S0VkTzQ9In0.u9X6K0OZSbcgijpNBHvEh4D5DOkpQ4U3arzHrgcy-wdSptp0MAyRKinF5QJQ0UqOFZZO0eqFuM8-mdtAMZRDNCQuGxQ3pkLst2duNmFl3QskiolaOVWkLXl3G3BX7kO5oM897HCusK-AFT2oET_QQ5slQ75dsW4KRaqTfChxv7Rca0gEV6baonfCnbRbDGSk4MnVcxPq_WWhRStkIP8E59DqA0IGrORmA5AMYaXNm8RE00alGen9ml5q5wONZKLyWPBY96SJBCmborQNQj9VtfFIGhwQ5FSayYunbDDLbUNE6BlABzGTM-Y97jKn6TEYaEFS-CJOD0S5gcSXmonW6g", resp.Output["id_token"], resp.Output)
 
-				assert.Equal(t, "http://localhost:9000/oidc/callback#access_token=WHwAII5NYaTQda7SdGw0Pg&expires_in=3600&id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OSwiYXRfaGFzaCI6ImVrdXA5akxsdm5ReEtlWV9JRHBubGNwNVNqeGp4N01XZ0Mwcks0S0VkTzQ9In0.u9X6K0OZSbcgijpNBHvEh4D5DOkpQ4U3arzHrgcy-wdSptp0MAyRKinF5QJQ0UqOFZZO0eqFuM8-mdtAMZRDNCQuGxQ3pkLst2duNmFl3QskiolaOVWkLXl3G3BX7kO5oM897HCusK-AFT2oET_QQ5slQ75dsW4KRaqTfChxv7Rca0gEV6baonfCnbRbDGSk4MnVcxPq_WWhRStkIP8E59DqA0IGrORmA5AMYaXNm8RE00alGen9ml5q5wONZKLyWPBY96SJBCmborQNQj9VtfFIGhwQ5FSayYunbDDLbUNE6BlABzGTM-Y97jKn6TEYaEFS-CJOD0S5gcSXmonW6g&scope=email&state=test_state&token_type=Bearer", location, resp.Output)
+				assert.Equal(t, "http://localhost:8090/oidc/callback#access_token=WHwAII5NYaTQda7SdGw0Pg&expires_in=3600&id_token=eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAvb2lkYyIsInN1YiI6IjEyMzQiLCJhdWQiOlsidGVzdF9jbGllbnRfaWQiXSwiZXhwIjotNjc5NTM2MDk3OSwiaWF0IjotNjc5NTM2NDU3OSwiYXRfaGFzaCI6ImVrdXA5akxsdm5ReEtlWV9JRHBubGNwNVNqeGp4N01XZ0Mwcks0S0VkTzQ9In0.u9X6K0OZSbcgijpNBHvEh4D5DOkpQ4U3arzHrgcy-wdSptp0MAyRKinF5QJQ0UqOFZZO0eqFuM8-mdtAMZRDNCQuGxQ3pkLst2duNmFl3QskiolaOVWkLXl3G3BX7kO5oM897HCusK-AFT2oET_QQ5slQ75dsW4KRaqTfChxv7Rca0gEV6baonfCnbRbDGSk4MnVcxPq_WWhRStkIP8E59DqA0IGrORmA5AMYaXNm8RE00alGen9ml5q5wONZKLyWPBY96SJBCmborQNQj9VtfFIGhwQ5FSayYunbDDLbUNE6BlABzGTM-Y97jKn6TEYaEFS-CJOD0S5gcSXmonW6g&scope=email&state=test_state&token_type=Bearer", location, resp.Output)
 			case "code token id_token":
 				assert.Equal(t, "test_hook_code", resp.Output["code"])
 				assert.Equal(t, "WHwAII5NYaTQda7SdGw0Pg", resp.Output["access_token"], resp.Output)
@@ -285,6 +285,7 @@ var authorizationCodeCases = []testcase{
 	{
 		vals: url.Values{
 			"grant_type": {"authorization_code"},
+			"client_id":  {"test_client_id"},
 		},
 		expected: protocol.ErrInvalidGrant,
 	},
@@ -322,7 +323,7 @@ var authorizationCodeCases = []testcase{
 			"code":          {"test_hook_code"},
 			"client_id":     {"test_client_id"},
 			"client_secret": {"aabbccdd"},
-			"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+			"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 		},
 		expected: protocol.ErrInvalidRequest,
 	},
@@ -332,7 +333,7 @@ var authorizationCodeCases = []testcase{
 			"grant_type":   {"authorization_code"},
 			"code":         {"test_hook_code"},
 			"client_id":    {"test_client_id"},
-			"redirect_uri": {"http://localhost:9000/oidc/callback"},
+			"redirect_uri": {"http://localhost:8090/oidc/callback"},
 		},
 		expected: nil,
 	},
@@ -345,7 +346,7 @@ func TestTokenAuthorizationCode(t *testing.T) {
 			vals: url.Values{
 				"client_id":     {"test_client_id"},
 				"response_type": {"code"},
-				"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+				"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 				"state":         {"test_state"},
 			},
 			expected: nil,
@@ -418,7 +419,7 @@ func TestTokenRefreshToken(t *testing.T) {
 			vals: url.Values{
 				"client_id":     {"test_client_id"},
 				"response_type": {"code"},
-				"redirect_uri":  {"http://localhost:9000/oidc/callback"},
+				"redirect_uri":  {"http://localhost:8090/oidc/callback"},
 				"state":         {"test_state"},
 			},
 			expected: nil,
@@ -447,7 +448,7 @@ func TestTokenRefreshToken(t *testing.T) {
 				"grant_type":   {"authorization_code"},
 				"code":         {"test_hook_code"},
 				"client_id":    {"test_client_id"},
-				"redirect_uri": {"http://localhost:9000/oidc/callback"},
+				"redirect_uri": {"http://localhost:8090/oidc/callback"},
 			},
 			expected: nil,
 		},
@@ -505,7 +506,7 @@ var passwordCases = []testcase{
 			"grant_type": {"password"},
 			"username":   {"hello"},
 			"password":   {"world"},
-			"scope":      {"email"},
+			"scope":      {"email", "phone"},
 		},
 		expected: nil,
 	},
@@ -528,7 +529,7 @@ func TestTokenPassword(t *testing.T) {
 		// access ok
 		if resp.ErrCode == nil {
 			// validate username & password
-			if req.Username == "hello" && req.Password == "world" {
+			if req.PasswordReq.Username == "hello" && req.PasswordReq.Password == "world" {
 				req.UserID = "1234"
 			}
 			server.FinishTokenRequest(resp, r, req)

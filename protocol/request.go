@@ -12,97 +12,150 @@ import (
 // https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 type AuthorizeRequest struct {
 	// required & recommended
-	ResponseType SpaceDelimitedArr `json:"response_type" schema:"response_type"`
-	ClientID     string            `json:"client_id" schema:"client_id"`
-	RedirectURI  string            `json:"redirect_uri" schema:"redirect_uri"`
-	State        string            `json:"state" schema:"state"`
-	Scope        SpaceDelimitedArr `json:"scope" schema:"scope"`
+	ResponseType SpaceDelimitedArr `schema:"response_type" json:"response_type"`
+	ClientID     string            `schema:"client_id" json:"client_id"`
+	RedirectURI  string            `schema:"redirect_uri" json:"redirect_uri"`
+	State        string            `schema:"state" json:"state"`
+	Scope        SpaceDelimitedArr `schema:"scope" json:"scope"`
 	// openid optional
-	Nonce        string            `json:"nonce,omitempty" schema:"nonce"`
-	ResponseMode ResponseMode      `json:"response_mode,omitempty" schema:"response_mode"`
-	Display      Display           `json:"display,omitempty" schema:"display"`
-	Prompt       SpaceDelimitedArr `json:"prompt,omitempty" schema:"prompt"`
-	MaxAge       int               `json:"max_age,omitempty" schema:"max_age"`
-	UILocales    Locales           `json:"ui_locales,omitempty" schema:"ui_locales"`
-	IDTokenHint  string            `json:"id_token_hint,omitempty" schema:"id_token_hint"`
-	LoginHint    string            `json:"login_hint,omitempty" schema:"login_hint"`
-	ACRValues    []string          `json:"acr_values,omitempty" schema:"acr_values"`
+	Nonce        string            `schema:"nonce" json:"nonce,omitempty"`
+	ResponseMode ResponseMode      `schema:"response_mode" json:"response_mode,omitempty"`
+	Display      Display           `schema:"display" json:"display,omitempty"`
+	Prompt       SpaceDelimitedArr `schema:"prompt" json:"prompt,omitempty"`
+	MaxAge       int               `schema:"max_age" json:"max_age,omitempty"`
+	UILocales    Locales           `schema:"ui_locales" json:"ui_locales,omitempty"`
+	IDTokenHint  string            `schema:"id_token_hint" json:"id_token_hint,omitempty"`
+	LoginHint    string            `schema:"login_hint" json:"login_hint,omitempty"`
+	ACRValues    []string          `schema:"acr_values" json:"acr_values,omitempty"`
 	// code challenge
-	CodeChallenge       string              `json:"code_challenge,omitempty" schema:"code_challenge"`
-	CodeChallengeMethod CodeChallengeMethod `json:"code_challenge_method,omitempty" schema:"code_challenge_method"`
+	CodeChallenge       string              `schema:"code_challenge" json:"code_challenge,omitempty"`
+	CodeChallengeMethod CodeChallengeMethod `schema:"code_challenge_method" json:"code_challenge_method,omitempty"`
 	// request object
-	Request string `json:"request,omitempty" schema:"request"`
+	Request string `schema:"request" json:"request,omitempty"`
 
-	UserID        string `json:"user_id,omitempty" schema:"-"` // logined userID
-	OpenID        bool   `json:"open_id,omitempty" schema:"-"`
-	OfflineAccess bool   `json:"offline_access,omitempty" schema:"-"`
-	Client        Client `json:"-" schema:"-"`
-	Iss           string `json:"-" schema:"-"` // dynamic issuer
+	Issuer        string `schema:"-" json:"-"` // dynamic issuer
+	Client        Client `schema:"-" json:"-"`
+	UserID        string `schema:"-" json:"user_id,omitempty"` // logined userID
+	OpenID        bool   `schema:"-" json:"open_id,omitempty"`
+	OfflineAccess bool   `schema:"-" json:"offline_access,omitempty"`
 }
 
 // AuthorizeData authorize data
 type AuthorizeData struct {
 	*AuthorizeRequest
 
-	ExpiresIn int       `json:"expires_in" schema:"-"`
-	CreatedAt time.Time `json:"created_at" schema:"-"`
+	ExpiresIn int       `json:"expires_in"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// GrantAuthorizationCodeRequest authorization_code
+type GrantAuthorizationCodeRequest struct {
+	Code         string `schema:"code" json:"code"`
+	RedirectURI  string `schema:"redirect_uri" json:"redirect_uri"`
+	CodeVerifier string `schema:"code_verifier" json:"code_verifier"` // PKCE
+	ClientID     string `schema:"client_id" json:"client_id"`
+	// Extension grants
+	ClientAssertion     string `schema:"client_assertion" json:"client_assertion"`
+	ClientAssertionType string `schema:"client_assertion_type" json:"client_assertion_type"`
+}
+
+// GrantRefreshTokenRequest refresh_token
+type GrantRefreshTokenRequest struct {
+	RefreshToken string            `schema:"refresh_token" json:"refresh_token"`
+	Scope        SpaceDelimitedArr `schema:"scope" json:"scope"`
+	// Extension grants
+	ClientAssertion     string `schema:"client_assertion" json:"client_assertion"`
+	ClientAssertionType string `schema:"client_assertion_type" json:"client_assertion_type"`
+}
+
+// GrantClientCredentialsRequest client_credentials
+type GrantClientCredentialsRequest struct {
+	Scope SpaceDelimitedArr `schema:"scope" json:"scope"`
+}
+
+// GrantPasswordRequest passowrd
+type GrantPasswordRequest struct {
+	Username string            `schema:"username" json:"username"`
+	Password string            `schema:"password" json:"password"`
+	Scope    SpaceDelimitedArr `schema:"scope" json:"scope"`
+}
+
+// GrantImplicitRequest implicit
+type GrantImplicitRequest struct {
+	RedirectURI string            `json:"redirect_uri"`
+	Scope       SpaceDelimitedArr `json:"scope"`
+}
+
+// GrantJwtBearerRequest urn:ietf:params:oauth:grant-type:jwt-bearer
+type GrantJwtBearerRequest struct {
+	ClientID  string            `schema:"client_id" json:"client_id"`
+	Assertion string            `schema:"assertion" json:"assertion"`
+	Scope     SpaceDelimitedArr `schema:"scope" json:"scope"`
+}
+
+// GrantTokenExchangeRequest urn:ietf:params:oauth:grant-type:token-exchange
+type GrantTokenExchangeRequest struct {
+	SubjectToken       string            `schema:"subject_token" json:"subject_token"`
+	SubjectTokenType   string            `schema:"subject_token_type" json:"subject_token_type"`
+	ActorToken         string            `schema:"actor_token" json:"actor_token,omitempty"`
+	ActorTokenType     string            `schema:"actor_token_type" json:"actor_token_type,omitempty"`
+	Resource           []string          `schema:"resource" json:"resource,omitempty"` // required if actor_token present
+	Audience           jwt.ClaimStrings  `schema:"audience" json:"audience,omitempty"`
+	RequestedTokenType string            `schema:"requested_token_type" json:"requested_token_type,omitempty"`
+	Scope              SpaceDelimitedArr `schema:"scope" json:"scope,omitempty"`
+}
+
+// GrantDeviceCodeRequest urn:ietf:params:oauth:grant-type:device_code
+type GrantDeviceCodeRequest struct {
+	ClientID string            `schema:"client_id" json:"client_id"`
+	Scope    SpaceDelimitedArr `schema:"scope" json:"scope,omitempty"`
+}
+
+// GrantSaml2BearerRequest urn:ietf:params:oauth:grant-type:saml2-bearer
+type GrantSaml2BearerRequest struct {
+	ClientID  string            `schema:"client_id" json:"client_id"`
+	Assertion string            `schema:"assertion" json:"assertion"`
+	Scope     SpaceDelimitedArr `schema:"scope" json:"scope"`
 }
 
 // AccessRequest is a request for access tokens
 type AccessRequest struct {
-	GrantType GrantType `json:"grant_type" schema:"grant_type"`
+	GrantType GrantType `json:"grant_type"`
 
 	// authorization_code
-	Code         string `json:"code,omitempty" schema:"code"`
-	RedirectURI  string `json:"redirect_uri,omitempty" schema:"redirect_uri"`
-	CodeVerifier string `json:"code_verifier,omitempty" schema:"code_verifier"`
+	AuthorizationCodeReq *GrantAuthorizationCodeRequest `json:"authorization_code_req,omitempty"`
 	// refresh_token
-	RefreshToken string `json:"refresh_token,omitempty" schema:"refresh_token"`
+	RefreshTokenReq *GrantRefreshTokenRequest `json:"refresh_token_req,omitempty"`
 	// client_credentials nothing todo
+	ClientCredentialsReq *GrantClientCredentialsRequest `json:"client_credentials_req,omitempty"`
 	// password
-	Username string `json:"username,omitempty" schema:"username"`
-	Password string `json:"password,omitempty" schema:"password"`
-
+	PasswordReq *GrantPasswordRequest `json:"password_req,omitempty"`
+	// implicit
+	ImplicitReq *GrantImplicitRequest `json:"implicit_req,omitempty"`
 	// urn:ietf:params:oauth:grant-type:jwt-bearer
-	Issuer    string           `json:"iss,omitempty"`
-	Subject   string           `json:"sub,omitempty"`
-	Audience  jwt.ClaimStrings `json:"aud,omitempty"`
-	IssuedAt  jwt.NumericDate  `json:"iat,omitempty"`
-	ExpiresAt jwt.NumericDate  `json:"exp,omitempty"`
+	JwtBearerReq *GrantJwtBearerRequest `json:"jwt_bearer_req,omitempty"`
 	// urn:ietf:params:oauth:grant-type:token-exchange
-	subjectToken       string           `schema:"subject_token"`
-	subjectTokenType   string           `schema:"subject_token_type"`
-	actorToken         string           `schema:"actor_token"`
-	actorTokenType     string           `schema:"actor_token_type"`
-	resource           []string         `schema:"resource"`
-	audience           jwt.ClaimStrings `schema:"audience"`
-	requestedTokenType string           `schema:"requested_token_type"`
+	TokenExchangeReq *GrantTokenExchangeRequest `json:"token_exchange_req,omitempty"`
 	// urn:ietf:params:oauth:grant-type:device_code
+	DeviceCodeReq *GrantDeviceCodeRequest `json:"device_code_req,omitempty"`
+	// urn:ietf:params:oauth:grant-type:saml2-bearer
+	Saml2BearerReq *GrantSaml2BearerRequest `json:"saml2_bearer_req,omitempty"`
 
-	// refresh_token & jwt-bearer & token-exchange
-	// client_credentials & password
-	Scope SpaceDelimitedArr `json:"scope,omitempty" schema:"scope"`
-	// authorization_code & refresh_token
-	ClientID            string `json:"client_id" schema:"client_id"`
-	ClientSecret        string `json:"-" schema:"client_secret"`
-	ClientAssertion     string `json:"client_assertion,omitempty" schema:"client_assertion"`
-	ClientAssertionType string `json:"client_assertion_type,omitempty" schema:"client_assertion_type"`
-
-	AuthorizeData   *AuthorizeData `json:"authorize_data" schema:"-"`
-	UserID          string         `json:"user_id" schema:"-"`
+	Issuer          string         `json:"-" schema:"-"` // dynamic issuer
+	Client          Client         `json:"-" schema:"-"` // client
+	GenerateRefresh bool           `json:"-" schema:"-"` // should generate refresh_token
 	AccessData      *AccessData    `json:"-" schema:"-"` // previous access data
-	Client          Client         `json:"-" schema:"-"`
-	GenerateRefresh bool           `json:"-" schema:"-"`
-	Iss             string         `json:"-" schema:"-"` // dynamic issuer
+	UserID          string         `json:"user_id" schema:"-"`
+	AuthorizeData   *AuthorizeData `json:"authorize_data,omitempty" schema:"-"`
 }
 
 // AccessData access data
 type AccessData struct {
 	*AccessRequest
-
+	// final authorization result
 	UserData  *UserInfo         `json:"user_data"`
-	CreatedAt time.Time         `json:"created_at"`
 	Scope     SpaceDelimitedArr `json:"scope"`
+	CreatedAt time.Time         `json:"created_at"`
 
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
@@ -116,9 +169,9 @@ type AccessData struct {
 type UserInfoRequest struct {
 	Token string `schema:"-"`
 
+	Issuer     string      `schema:"-"` // dynamic issuer
 	Subject    string      `schema:"-"`
 	AccessData *AccessData `schema:"-"`
-	Iss        string      `schema:"-"` // dynamic issuer
 }
 
 // RevocationRequest revocation endpoint
@@ -126,17 +179,17 @@ type RevocationRequest struct {
 	Token         string        `schema:"token"` // access_token or refresh_token
 	TokenTypeHint TokenTypeHint `schema:"token_type_hint"`
 
+	Issuer string `schema:"-"` // dynamic issuer
 	Client Client `schema:"-"`
-	Iss    string `schema:"-"` // dynamic issuer
 }
 
 // CheckSessionRequest check_session_iframe endpoint
 type CheckSessionRequest struct {
 	ClientID string `schema:"client_id"`
 
+	Issuer    string `schema:"-"` // dynamic issuer
 	Origin    string `schema:"-"`
 	ExpiresIn int    `schema:"-"`
-	Iss       string `schema:"-"` // dynamic issuer
 }
 
 // EndSessionRequest end_session endpoint
@@ -146,5 +199,5 @@ type EndSessionRequest struct {
 	PostLogoutRedirectURI string `schema:"post_logout_redirect_uri"`
 	State                 string `schema:"state"`
 
-	Iss string `schema:"-"` // dynamic issuer
+	Issuer string `schema:"-"` // dynamic issuer
 }

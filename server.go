@@ -75,7 +75,7 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 
 	// Decode form params to struct
-	req := &protocol.AuthorizeRequest{Iss: issuer}
+	req := &protocol.AuthorizeRequest{Issuer: issuer}
 	err = s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err), "", "")
@@ -169,16 +169,17 @@ func (s *Server) HandleAuthorizeRequest(resp *protocol.Response, r *http.Request
 	}
 	// step. check code challenge with PKCE
 	if typesOK.ResponseTypeCode || typesOK.ResponseTypeDevice { // oauth2 flow
+		isPublicClient := ValidateClientSecret(cli, "")
 		// Optional PKCE support (https://tools.ietf.org/html/rfc7636)
 		if req.CodeChallenge == "" {
-			if s.options.ForcePKCEForPublicClients && ValidateClientSecret(cli, "") {
+			if isPublicClient && s.options.ForcePKCEForPublicClients {
 				resp.SetErrorURI(protocol.ErrInvalidRequest.
 					Desc("code_challenge (rfc7636) required for public client"), "", req.State)
 				return nil
 			}
 		}
 		codeChallMethod, ok := ValidateCodeChallenge(req.CodeChallenge, req.CodeChallengeMethod)
-		if !ok && s.options.ForcePKCEForPublicClients {
+		if isPublicClient && !ok && s.options.ForcePKCEForPublicClients {
 			// https://tools.ietf.org/html/rfc7636#section-4.4.1
 			resp.SetErrorURI(protocol.ErrInvalidRequest.
 				Desc("code_challenge_method (rfc7636) required for public clients"), "", req.State)
@@ -237,13 +238,16 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 		resp.SetResponseMode(protocol.ResponseModeFragment)
 		// generate & save token
 		accessReq := &protocol.AccessRequest{
-			GrantType:   protocol.GrantTypeImplicit,
-			Scope:       req.Scope,
-			RedirectURI: req.RedirectURI,
+			GrantType: protocol.GrantTypeImplicit,
+			ImplicitReq: &protocol.GrantImplicitRequest{
+				Scope:       req.Scope,
+				RedirectURI: req.RedirectURI,
+			},
 
-			UserID:          req.UserID,
+			Issuer:          req.Issuer,
 			Client:          req.Client,
 			GenerateRefresh: false, // do not return refresh_token
+			UserID:          req.UserID,
 		}
 		s.FinishTokenRequest(resp, r, accessReq)
 		if req.State != "" && resp.ErrCode == nil {
@@ -260,7 +264,7 @@ func (s *Server) FinishAuthorizeRequest(resp *protocol.Response, r *http.Request
 			resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", req.State)
 			return
 		}
-		claims := s.rebuildIDToken(req.Client, req, userData, req.Iss)
+		claims := s.rebuildIDToken(req.Client, req, userData, req.Issuer)
 		// check at_hash, https://openid.net/specs/openid-connect-core-1_0.html#ImplicitIDToken
 		if at, ok := resp.Output["access_token"]; ok {
 			hash := sha256.Sum256([]byte(at.(string)))
@@ -297,25 +301,18 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request, is
 		return nil
 	}
 
-	req := &protocol.AccessRequest{Iss: issuer}
-	err = s.decoder.Decode(req, r.Form)
-	if err != nil {
-		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
-		return nil
-	}
+	grantType := protocol.GrantType(r.FormValue("grant_type"))
+	req := &protocol.AccessRequest{GrantType: grantType, Issuer: issuer}
 	// The client uses an extension grant type by specifying the grant type using an absolute URI (defined by
 	// the authorization server) as the value of the "grant_type" parameter of the token endpoint, and by adding
 	// any additional parameters necessary.
 	// https://www.rfc-editor.org/rfc/rfc6749#section-4.5
-	if !protocol.IsExtensionGrants(req.GrantType) {
+	if !protocol.IsExtensionGrants(grantType) {
 		// client authentication
 		auth := s.getClientAuth(r, s.options.AllowClientSecretInParams)
 		if auth == nil {
 			resp.SetErrorURI(protocol.ErrInvalidRequest.Desc("check auth error"), "", "")
 			return nil
-		}
-		if req.ClientID == "" { // client_id from auth
-			req.ClientID = auth.Username
 		}
 		// must have a valid client
 		cli, err := s.getClient(auth, resp)
@@ -330,8 +327,7 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request, is
 		resp.SetErrorURI(protocol.ErrUnsupportedGrantType.Desc("unsupported grant type: "+string(req.GrantType)), "", "")
 		return nil
 	}
-	var grantType = protocol.GrantType(r.FormValue("grant_type"))
-	switch grantType {
+	switch req.GrantType {
 	case protocol.GrantTypeAuthorizationCode:
 		err = s.handleAuthorizationCodeRequest(resp, r, req)
 	case protocol.GrantTypeRefreshToken:
@@ -362,15 +358,42 @@ func (s *Server) HandleTokenRequest(resp *protocol.Response, r *http.Request, is
 // FinishTokenRequest token request finish
 func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, req *protocol.AccessRequest) {
 	var (
-		ui  *protocol.UserInfo
-		err error
+		ui       *protocol.UserInfo
+		err      error
+		withUser = true
 	)
-	if req.GrantType != protocol.GrantTypeClientCredentials {
+	ret := &protocol.AccessData{AccessRequest: req, Client: req.Client}
+	switch req.GrantType {
+	case protocol.GrantTypeAuthorizationCode:
+		ret.Scope = req.AuthorizeData.Scope
+		// remove authorization token
+		s.options.Storage.RemoveAuthorize(req.AuthorizationCodeReq.Code)
+	case protocol.GrantTypeRefreshToken:
+		ret.Scope = req.RefreshTokenReq.Scope
+	case protocol.GrantTypePassword:
+		ret.Scope = req.PasswordReq.Scope
+	case protocol.GrantTypeImplicit:
+		ret.Scope = req.ImplicitReq.Scope
+	case protocol.GrantTypeClientCredentials:
+		ret.Scope = req.ClientCredentialsReq.Scope
+		withUser = false
+	case protocol.GrantTypeJwtBearer:
+		// TODO
+		fallthrough
+	case protocol.GrantTypeTokenExchange:
+		// TODO
+		fallthrough
+	case protocol.GrantTypeDeviceCode:
+		// TODO
+		resp.SetErrorURI(protocol.ErrUnsupportedGrantType.Desc("not implements"), "", "")
+		return
+	}
+	if withUser {
 		if req.UserID == "" {
 			resp.SetErrorURI(protocol.ErrAccessDenied, "", "")
 			return
 		}
-		ui, err = s.options.Storage.UserDataScopes(req.UserID, req.Scope)
+		ui, err = s.options.Storage.UserDataScopes(req.UserID, ret.Scope)
 		if err != nil {
 			resp.SetErrorURI(protocol.ErrAccessDenied.Wrap(err), "", "")
 			return
@@ -379,23 +402,12 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 		if ui.Subject == "" {
 			ui.Subject = req.UserID
 		}
-	}
-	ret := &protocol.AccessData{
-		AccessRequest: req,
-
-		UserData: ui,
-		Scope:    req.Scope,
-
-		Client: req.Client,
+		ret.UserData = ui
 	}
 	ret.AccessToken, ret.RefreshToken, err = s.GenerateAccessTokenAndSave(ret, req.GenerateRefresh)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrServerError.Wrap(err), "", "")
 		return
-	}
-	// remove authorization token
-	if req.Code != "" {
-		s.options.Storage.RemoveAuthorize(req.Code)
 	}
 	// remove previous access token
 	if req.AccessData != nil && !s.options.RetainTokenAfrerRefresh {
@@ -418,7 +430,7 @@ func (s *Server) FinishTokenRequest(resp *protocol.Response, r *http.Request, re
 	// (so that an ID Token will be returned from the Token Endpoint). must be authorization_code
 	if ad := req.AuthorizeData; ad != nil && ad.OpenID {
 		// UserData must be id_token data
-		claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData, req.Iss)
+		claims := s.rebuildIDToken(req.Client, ad.AuthorizeRequest, ret.UserData, req.Issuer)
 
 		idToken, err := signPayload(req.Client, claims)
 		if err != nil {
@@ -456,7 +468,7 @@ func (s *Server) HandleUserInfoRequest(resp *protocol.Response, r *http.Request,
 	req := &protocol.UserInfoRequest{
 		Token: token,
 
-		Iss: issuer,
+		Issuer: issuer,
 	}
 	req.AccessData, err = s.options.Storage.LoadAccess(req.Token)
 	if err != nil {
@@ -489,7 +501,7 @@ func (s *Server) HandleRevocationRequest(resp *protocol.Response, r *http.Reques
 		return nil
 	}
 
-	req := &protocol.RevocationRequest{Iss: issuer}
+	req := &protocol.RevocationRequest{Issuer: issuer}
 	err = s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
@@ -550,7 +562,7 @@ func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, r *http.Req
 		return nil
 	}
 	// check referer host
-	req := &protocol.CheckSessionRequest{Iss: issuer}
+	req := &protocol.CheckSessionRequest{Issuer: issuer}
 	err := s.decoder.Decode(req, r.Form)
 	if err != nil {
 		resp.SetErrorURI(protocol.ErrInvalidRequest.Wrap(err).Desc("error decoding form"), "", "")
@@ -572,7 +584,7 @@ func (s *Server) HandleCheckSessionEndpoint(resp *protocol.Response, r *http.Req
 func (s *Server) FinishCheckSessionRequest(resp *protocol.Response, w http.ResponseWriter, req *protocol.CheckSessionRequest) {
 	resp.Output["origin"] = req.Origin
 
-	u, _ := url.Parse(req.Iss)
+	u, _ := url.Parse(req.Issuer)
 	sid := &http.Cookie{
 		Name:  "sid",
 		Value: fmt.Sprint(req.ExpiresIn > 0), // true / false

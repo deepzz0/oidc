@@ -61,10 +61,10 @@ func (s *Server) GenerateAccessTokenAndSave(req *protocol.AccessData,
 				time.Duration(exps.AccessTokenExpiration))),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    req.Iss,
+			Issuer:    req.Issuer,
 			Subject:   req.UserID,
 			ID:        tokenID,
-			Audience:  append(req.Audience, req.Client.ClientID()),
+			Audience:  jwt.ClaimStrings{req.Client.ClientID()},
 		}
 		token, err = signPayload(req.Client, claims)
 		if err != nil {

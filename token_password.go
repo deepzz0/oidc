@@ -11,11 +11,17 @@ import (
 func (s *Server) handlePasswordRequest(resp *protocol.Response, r *http.Request,
 	req *protocol.AccessRequest) error {
 
+	grantReq := &protocol.GrantPasswordRequest{}
+	err := s.decoder.Decode(grantReq, r.Form)
+	if err != nil {
+		return err
+	}
 	// username and password is required
-	if req.Username == "" || req.Password == "" {
+	if grantReq.Username == "" || grantReq.Password == "" {
 		return protocol.ErrInvalidGrant.Desc("username and password is required")
 	}
 
+	req.PasswordReq = grantReq
 	req.GenerateRefresh = true
 	// req.UserID should set by caller
 	return nil

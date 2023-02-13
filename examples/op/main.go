@@ -29,9 +29,7 @@ var (
 func main() {
 	e := gin.Default()
 
-	oidc := e.Group("/oidc", func(c *gin.Context) {
-		c.Set("clientid", "1234")
-	})
+	oidc := e.Group("/oidc")
 	{
 		oidc.GET("/.well-known/openid-configuration", handleOIDCDiscovery)
 		oidc.GET("/jwks.json", handleOIDCJwksJSON)
@@ -154,11 +152,11 @@ func handleOIDCAuthorize(c *gin.Context) {
 func handleOIDCToken(c *gin.Context) {
 	resp := protocol.NewResponse()
 	if req := server.HandleTokenRequest(resp, c.Request, issuer); req != nil {
-		fmt.Println(req.UserID)
+		fmt.Println("user_id", req.UserID)
 		// if grant_type == passord, should authenticate user
 		if req.GrantType == protocol.GrantTypePassword {
 			// validate username and password
-			if req.Username == "1234" && req.Password == "4321" {
+			if req.PasswordReq.Username == "1234" && req.PasswordReq.Password == "4321" {
 				req.UserID = "1234"
 			}
 		}
