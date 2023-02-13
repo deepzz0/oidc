@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/schema v1.2.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/oauth2 v0.5.0
+	golang.org/x/oauth2 v0.3.0
 	golang.org/x/text v0.7.0
 	gopkg.in/square/go-jose.v2 v2.6.0
 )
